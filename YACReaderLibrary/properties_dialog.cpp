@@ -1,5 +1,7 @@
 #include "properties_dialog.h"
 
+#include "comic_filename.h"
+#include "comic_metadata_editor.h"
 #include "cover_utils.h"
 #include "data_base_management.h"
 #include "db_helper.h"
@@ -7,6 +9,7 @@
 #include "initial_comic_info_extractor.h"
 #include "overloaded.h"
 #include "placeholder_cover.h"
+#include "staged_comic_rename.h"
 #include "staged_cover.h"
 #include "tracked_issues.h"
 #include "yacreader_cover_label.h"
@@ -26,11 +29,14 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSet>
 #include <QSizePolicy>
 #include <QTabWidget>
 #include <QToolButton>
 #include <QValidator>
+
+#include <memory>
 
 using namespace YACReader;
 
@@ -66,20 +72,36 @@ PropertiesDialog::PropertiesDialog(QWidget *parent)
 
     mainLayout = new QGridLayout;
     mainLayout->addWidget(tabBar, 0, 0);
+    tabBar->hide();
+    metadataEditor = new ComicMetadataEditor;
+    metadataScroll = new QScrollArea;
+    metadataScroll->setFrameShape(QFrame::NoFrame);
+    metadataScroll->setWidgetResizable(true);
+    metadataScroll->setWidget(metadataEditor);
+    mainLayout->addWidget(metadataScroll, 0, 0);
     mainLayout->addWidget(buttonBox, 1, 0, Qt::AlignBottom);
 
     mainWidget = new QWidget(this);
     mainWidget->setAutoFillBackground(true);
     mainWidget->setLayout(mainLayout);
+    mainWidget->setMinimumWidth(520);
+
+    auto coverPanel = new QWidget(this);
+    coverPanel->setMaximumWidth(480);
+    auto coverLayout = new QVBoxLayout(coverPanel);
+    coverLayout->setContentsMargins(0, 0, 0, 0);
+    coverLayout->setSpacing(0);
+    coverLayout->addWidget(cover, 1);
+    coverLayout->addWidget(coverBox);
 
     rootLayout->setHorizontalSpacing(0);
     rootLayout->setVerticalSpacing(0);
 
-    rootLayout->addWidget(cover, 0, 0, Qt::AlignTop);
+    rootLayout->addWidget(coverPanel, 0, 0);
     rootLayout->addWidget(mainWidget, 0, 1);
 
-    rootLayout->setColumnStretch(0, 0);
-    rootLayout->setColumnStretch(1, 1);
+    rootLayout->setColumnStretch(0, 2);
+    rootLayout->setColumnStretch(1, 3);
 
     QScreen *screen = parent != nullptr ? parent->window()->screen() : nullptr;
     if (screen == nullptr) {
@@ -91,8 +113,6 @@ PropertiesDialog::PropertiesDialog(QWidget *parent)
     this->setContentsMargins(0, 0, 0, 0);
     rootLayout->setContentsMargins(0, 0, 0, 0);
 
-    rootLayout->addWidget(coverBox, 0, 0, Qt::AlignBottom);
-
     setModal(true);
 
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
@@ -100,7 +120,7 @@ PropertiesDialog::PropertiesDialog(QWidget *parent)
 
 QSize PropertiesDialog::sizeHint() const
 {
-    return QSize(800, 444);
+    return QSize(1040, 720);
 }
 
 void PropertiesDialog::createTabBar()
@@ -603,6 +623,8 @@ void PropertiesDialog::loadComic(const ComicRecord &record)
 
     this->setWindowTitle(tr("Edit comic information"));
     setCover(coverOf(record));
+    metadataEditor->setMetadata({ info });
+    metadataEditor->setFileName(comic != nullptr ? recordFileName(record) : QString());
 }
 
 // a deleted comic or a placeholder shows its cover in grayscale, or the default image when there is no cover file
@@ -780,6 +802,12 @@ void PropertiesDialog::setComics(QList<ComicRecord> records)
         loadedColorState = colorCheck->checkState();
         loadedTypeIndex = typeCombo->currentIndex();
     }
+    QList<DescriptiveComicMetadata> metadata;
+    for (const auto &record : std::as_const(records))
+        metadata.append(recordMetadata(record));
+    metadataEditor->setMetadata(metadata);
+    if (records.size() != 1)
+        metadataEditor->setFileName(QString());
 }
 
 void PropertiesDialog::setTrackMissingIssues(FolderId folderId, const QString &folderName, const DescriptiveComicMetadata &run, const QStringList &folderNumbers)
@@ -821,6 +849,8 @@ void PropertiesDialog::setTrackMissingIssues(ReadingListId readingListId, const 
 // the per-issue fields are disabled; per-issue data comes later with Comic Vine or Edit metadata
 void PropertiesDialog::setTrackMode(bool track)
 {
+    tabBar->setVisible(track);
+    metadataScroll->setVisible(!track);
     numberEdit->setHidden(track);
     numberLabel->setText(track ? tr("Issues:") : tr("Issue number:"));
     issuesEdit->setVisible(track);
@@ -1032,6 +1062,8 @@ bool PropertiesDialog::showRecord(int index, int step)
 // a cleared field is NULL; the values that only one comic can have are only edited in sequential editing
 DescriptiveMetadataPatch PropertiesDialog::editedMetadata() const
 {
+    if (!trackedIn)
+        return metadataEditor->editedMetadata();
     using M = DescriptiveComicMetadata;
     DescriptiveMetadataPatch patch;
 
@@ -1094,6 +1126,8 @@ DescriptiveMetadataPatch PropertiesDialog::editedMetadata() const
 // the changed parts of the date, with the other parts of `info`
 std::optional<QVariant> PropertiesDialog::editedDate(const DescriptiveComicMetadata &info) const
 {
+    if (!trackedIn)
+        return std::nullopt;
     if (!dayEdit->isModified() && !monthEdit->isModified() && !yearEdit->isModified())
         return std::nullopt;
 
@@ -1113,6 +1147,8 @@ std::optional<QVariant> PropertiesDialog::editedDate(const DescriptiveComicMetad
 
 std::optional<YACReader::FileType> PropertiesDialog::editedType() const
 {
+    if (!trackedIn)
+        return std::nullopt;
     const auto index = typeCombo->currentIndex();
     if (index == -1 || index == loadedTypeIndex)
         return std::nullopt;
@@ -1167,6 +1203,21 @@ bool PropertiesDialog::updateComics()
     const int begin = sequentialEditing ? currentComicIndex : 0;
     const int end = sequentialEditing ? currentComicIndex + 1 : records.length();
 
+    const auto requestedName = metadataEditor->pendingFileName();
+    QString renameError;
+    std::unique_ptr<StagedComicRename> rename;
+    QString renamedPath;
+    if (!requestedName.isEmpty()) {
+        const auto comic = end - begin == 1 ? recordComic(records[begin]) : nullptr;
+        renameError = ComicFilename::invalidNameReason(requestedName);
+        if (!comic || !renameError.isEmpty()) {
+            QMessageBox::warning(this, tr("Changes not saved"), comic ? renameError : tr("Rename is only available for one existing archive."));
+            return false;
+        }
+        renamedPath = comic->file.path.left(comic->file.path.lastIndexOf('/') + 1) + requestedName;
+        if (renamedPath != comic->file.path)
+            rename = std::make_unique<StagedComicRename>(basePath + comic->file.path, basePath + renamedPath);
+    }
     bool refused = false;
     bool failed = false;
     bool wrote = false;
@@ -1180,11 +1231,18 @@ bool PropertiesDialog::updateComics()
     QString connectionName = "";
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(databasePath);
-        db.transaction();
+        if (!db.transaction()) {
+            QMessageBox::warning(this, tr("Changes not saved"), tr("The changes could not be saved."));
+            return false;
+        }
 
         for (int i = begin; i < end && !refused; i++) {
             const auto stored = DBHelper::loadRecord(records[i], db);
             refused = !stored;
+            if (rename && stored) {
+                const auto *current = recordComic(*stored);
+                refused = !current || current->file.path != recordComic(records[i])->file.path;
+            }
             if (const auto *placeholder = stored ? recordPlaceholder(*stored) : nullptr)
                 storedPlaceholderCovers.insert(placeholder->id, placeholder->coverKey);
         }
@@ -1264,7 +1322,19 @@ bool PropertiesDialog::updateComics()
             }
 
             written = written && std::all_of(stagedCovers.begin(), stagedCovers.end(), [](StagedCover &staged) { return staged.install(); });
+            if (written && rename) {
+                auto *comic = recordComic(savedRecords.first().second);
+                written = rename->install(renameError);
+                if (written) {
+                    written = DBHelper::moveComic(comic->file.id.value(), comic->file.folderId.value(), requestedName, renamedPath, db);
+                    comic->file.fileName = requestedName;
+                    comic->file.path = renamedPath;
+                    wrote = true;
+                }
+            }
             if (written && db.commit()) {
+                if (rename)
+                    rename->finish();
                 for (auto &staged : stagedCovers)
                     staged.finish();
                 for (const auto &[id, key] : std::as_const(newPlaceholderCovers)) {
@@ -1273,6 +1343,11 @@ bool PropertiesDialog::updateComics()
                 }
             } else {
                 db.rollback();
+                if (rename) {
+                    QString restoreError;
+                    if (!rename->restore(restoreError))
+                        renameError += "\n" + restoreError;
+                }
                 for (auto &staged : stagedCovers)
                     staged.restore();
                 for (const auto &[id, key] : std::as_const(newPlaceholderCovers))
@@ -1292,10 +1367,12 @@ bool PropertiesDialog::updateComics()
         return false;
     }
     if (failed) {
-        QMessageBox::warning(this, tr("Changes not saved"), tr("The changes could not be saved."));
+        QMessageBox::warning(this, tr("Changes not saved"), tr("The changes could not be saved.") + (renameError.isEmpty() ? QString() : "\n" + renameError));
         return false;
     }
 
+    if (rename)
+        metadataEditor->setFileName(requestedName);
     for (auto &[index, record] : savedRecords)
         records[index] = std::move(record);
     updated = updated || wrote;
@@ -1323,9 +1400,7 @@ void PropertiesDialog::setMultipleCover()
 
 void PropertiesDialog::setCover(const QPixmap &coverI)
 {
-    auto coverImage = coverI.scaledToHeight(575, Qt::SmoothTransformation);
-
-    cover->setPixmap(coverImage);
+    cover->setPixmap(coverI);
 }
 
 void PropertiesDialog::setFilename(const QString &nameString)

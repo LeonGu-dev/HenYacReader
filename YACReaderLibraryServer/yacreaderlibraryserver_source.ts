@@ -4,7 +4,7 @@
 <context>
     <name>DBHelper</name>
     <message>
-        <location filename="../YACReaderLibrary/db_helper.cpp" line="1848"/>
+        <location filename="../YACReaderLibrary/db_helper.cpp" line="1884"/>
         <source>The folder entry could not be found in the library database.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -152,241 +152,276 @@ To learn about the available settings, please check the documentation at https:/
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="101"/>
-        <source>Series name</source>
+        <source>Translated comic title</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="102"/>
-        <source>Issue number</source>
+        <source>Creator circle</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="103"/>
-        <source>Volume identifier</source>
+        <source>Source work or IP</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="104"/>
-        <source>Reading format</source>
+        <source>Translator or translation group</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="105"/>
-        <source>Comic rating</source>
+        <source>Censorship status</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="106"/>
-        <source>Textual tags</source>
+        <source>Translation status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="107"/>
+        <source>Multiple-author anthology</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="108"/>
-        <source>Writer credit</source>
+        <source>Series name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="109"/>
-        <source>Penciller credit</source>
+        <source>Issue number</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="110"/>
-        <source>Inker credit</source>
+        <source>Volume identifier</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="111"/>
-        <source>Colorist credit</source>
+        <source>Reading format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="112"/>
-        <source>Letterer credit</source>
+        <source>Comic rating</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="113"/>
-        <source>Cover artist credit</source>
+        <source>Textual tags</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="114"/>
-        <source>Editor credit</source>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="115"/>
+        <source>Writer credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="116"/>
-        <source>Story arc name</source>
+        <source>Penciller credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="117"/>
-        <source>Position within a story arc</source>
+        <source>Inker credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="118"/>
-        <source>Number of issues in a story arc</source>
+        <source>Colorist credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="119"/>
-        <source>Characters appearing in the comic</source>
+        <source>Letterer credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="120"/>
-        <source>Teams appearing in the comic</source>
+        <source>Cover artist credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="121"/>
-        <source>Locations appearing in the comic</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="122"/>
-        <source>Primary character or team</source>
+        <source>Editor credit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="123"/>
-        <source>Comic synopsis</source>
+        <source>Story arc name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="124"/>
+        <source>Position within a story arc</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="125"/>
-        <source>Publisher name</source>
+        <source>Number of issues in a story arc</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="126"/>
-        <source>Publishing imprint</source>
+        <source>Characters appearing in the comic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="127"/>
-        <source>Publication format</source>
+        <source>Teams appearing in the comic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="128"/>
-        <source>Recommended age rating</source>
+        <source>Locations appearing in the comic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="129"/>
-        <source>Comic genre</source>
+        <source>Primary character or team</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="130"/>
-        <source>ISO language code</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="131"/>
-        <source>Publication date metadata</source>
+        <source>Comic synopsis</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="132"/>
-        <source>Series grouping metadata</source>
+        <source>Publisher name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="133"/>
-        <source>Alternate series name</source>
+        <source>Publishing imprint</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="134"/>
-        <source>Alternate issue number</source>
+        <source>Publication format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="135"/>
-        <source>Alternate series issue count</source>
+        <source>Recommended age rating</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="136"/>
-        <source>Number of issues in the series</source>
+        <source>Comic genre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="137"/>
+        <source>ISO language code</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="138"/>
-        <source>Whether the comic is marked as read</source>
+        <source>Publication date metadata</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="139"/>
-        <source>Whether reading has started</source>
+        <source>Series grouping metadata</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="140"/>
-        <source>Whether metadata has been edited</source>
+        <source>Alternate series name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="141"/>
-        <source>Whether the comic is in color</source>
+        <source>Alternate issue number</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="142"/>
-        <source>Number of pages</source>
+        <source>Alternate series issue count</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="143"/>
-        <source>Comic file name</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="144"/>
-        <source>When the item was added</source>
+        <source>Number of issues in the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="145"/>
-        <source>When the comic was last opened</source>
+        <source>Whether the comic is marked as read</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="146"/>
-        <source>Comic notes</source>
+        <source>Whether reading has started</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="147"/>
-        <source>Review text</source>
+        <source>Whether metadata has been edited</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="148"/>
+        <source>Whether the comic is in color</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="149"/>
-        <source>Parent folder name</source>
+        <source>Number of pages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="150"/>
-        <source>Default reading format for the folder</source>
+        <source>Comic file name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="151"/>
-        <source>Whether the folder is complete</source>
+        <source>When the item was added</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="152"/>
-        <source>Whether the folder is marked as finished</source>
+        <source>When the comic was last opened</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="153"/>
+        <source>Comic notes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="154"/>
+        <source>Review text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="156"/>
+        <source>Parent folder name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="157"/>
+        <source>Default reading format for the folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="158"/>
+        <source>Whether the folder is complete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="159"/>
+        <source>Whether the folder is marked as finished</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="160"/>
         <source>When the folder was updated</source>
         <translation type="unfinished"></translation>
     </message>

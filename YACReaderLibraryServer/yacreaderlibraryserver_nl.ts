@@ -4,7 +4,7 @@
 <context>
     <name>DBHelper</name>
     <message>
-        <location filename="../YACReaderLibrary/db_helper.cpp" line="1848"/>
+        <location filename="../YACReaderLibrary/db_helper.cpp" line="1884"/>
         <source>The folder entry could not be found in the library database.</source>
         <translation>De mapvermelding is niet gevonden in de database van de bibliotheek.</translation>
     </message>
@@ -156,241 +156,276 @@ Voor meer informatie over de beschikbare instellingen kunt u de documentatie raa
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="101"/>
+        <source>Translated comic title</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="102"/>
+        <source>Creator circle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="103"/>
+        <source>Source work or IP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="104"/>
+        <source>Translator or translation group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="105"/>
+        <source>Censorship status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="106"/>
+        <source>Translation status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="107"/>
+        <source>Multiple-author anthology</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="108"/>
         <source>Series name</source>
         <translation>Serienaam</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="102"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="109"/>
         <source>Issue number</source>
         <translation>Uitgavenummer</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="103"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="110"/>
         <source>Volume identifier</source>
         <translation>Volumeaanduiding</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="104"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="111"/>
         <source>Reading format</source>
         <translation>Leesindeling</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="105"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="112"/>
         <source>Comic rating</source>
         <translation>Stripwaardering</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="106"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="113"/>
         <source>Textual tags</source>
         <translation>Teksttags</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="108"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="115"/>
         <source>Writer credit</source>
         <translation>Vermelding van de schrijver</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="109"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="116"/>
         <source>Penciller credit</source>
         <translation>Vermelding van de tekenaar</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="110"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="117"/>
         <source>Inker credit</source>
         <translation>Vermelding van de inkter</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="111"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="118"/>
         <source>Colorist credit</source>
         <translation>Vermelding van de inkleurder</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="112"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="119"/>
         <source>Letterer credit</source>
         <translation>Vermelding van de letteraar</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="113"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="120"/>
         <source>Cover artist credit</source>
         <translation>Vermelding van de omslagtekenaar</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="114"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="121"/>
         <source>Editor credit</source>
         <translation>Vermelding van de redacteur</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="116"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="123"/>
         <source>Story arc name</source>
         <translation>Naam van de verhaallijn</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="117"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="124"/>
         <source>Position within a story arc</source>
         <translation>Positie binnen een verhaallijn</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="118"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="125"/>
         <source>Number of issues in a story arc</source>
         <translation>Aantal uitgaven in een verhaallijn</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="119"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="126"/>
         <source>Characters appearing in the comic</source>
         <translation>Personages die in de strip voorkomen</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="120"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="127"/>
         <source>Teams appearing in the comic</source>
         <translation>Teams die in de strip voorkomen</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="121"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="128"/>
         <source>Locations appearing in the comic</source>
         <translation>Locaties die in de strip voorkomen</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="122"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="129"/>
         <source>Primary character or team</source>
         <translation>Hoofdpersonage of hoofdteam</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="123"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="130"/>
         <source>Comic synopsis</source>
         <translation>Samenvatting van de strip</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="125"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="132"/>
         <source>Publisher name</source>
         <translation>Naam van de uitgever</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="126"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="133"/>
         <source>Publishing imprint</source>
         <translation>Uitgeversimprint</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="127"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="134"/>
         <source>Publication format</source>
         <translation>Publicatie-indeling</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="128"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="135"/>
         <source>Recommended age rating</source>
         <translation>Aanbevolen leeftijdsclassificatie</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="129"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="136"/>
         <source>Comic genre</source>
         <translation>Stripgenre</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="130"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="137"/>
         <source>ISO language code</source>
         <translation>ISO-taalcode</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="131"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="138"/>
         <source>Publication date metadata</source>
         <translation>Metagegevens van de publicatiedatum</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="132"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="139"/>
         <source>Series grouping metadata</source>
         <translation>Metagegevens voor seriegroepering</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="133"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="140"/>
         <source>Alternate series name</source>
         <translation>Alternatieve serienaam</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="134"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="141"/>
         <source>Alternate issue number</source>
         <translation>Alternatief uitgavenummer</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="135"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="142"/>
         <source>Alternate series issue count</source>
         <translation>Aantal uitgaven in de alternatieve serie</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="136"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="143"/>
         <source>Number of issues in the series</source>
         <translation>Aantal uitgaven in de serie</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="138"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="145"/>
         <source>Whether the comic is marked as read</source>
         <translation>Of de strip als gelezen is gemarkeerd</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="139"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="146"/>
         <source>Whether reading has started</source>
         <translation>Of het lezen is begonnen</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="140"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="147"/>
         <source>Whether metadata has been edited</source>
         <translation>Of de metagegevens zijn bewerkt</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="141"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="148"/>
         <source>Whether the comic is in color</source>
         <translation>Of de strip in kleur is</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="142"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="149"/>
         <source>Number of pages</source>
         <translation>Aantal pagina&apos;s</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="143"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="150"/>
         <source>Comic file name</source>
         <translation>Bestandsnaam van de strip</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="144"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="151"/>
         <source>When the item was added</source>
         <translation>Wanneer het item is toegevoegd</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="145"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="152"/>
         <source>When the comic was last opened</source>
         <translation>Wanneer de strip voor het laatst is geopend</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="146"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="153"/>
         <source>Comic notes</source>
         <translation>Stripnotities</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="147"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="154"/>
         <source>Review text</source>
         <translation>Recensietekst</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="149"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="156"/>
         <source>Parent folder name</source>
         <translation>Naam van de bovenliggende map</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="150"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="157"/>
         <source>Default reading format for the folder</source>
         <translation>Standaard leesindeling voor de map</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="151"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="158"/>
         <source>Whether the folder is complete</source>
         <translation>Of de map compleet is</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="152"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="159"/>
         <source>Whether the folder is marked as finished</source>
         <translation>Of de map als voltooid is gemarkeerd</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="153"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="160"/>
         <source>When the folder was updated</source>
         <translation>Wanneer de map is bijgewerkt</translation>
     </message>

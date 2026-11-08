@@ -49,6 +49,14 @@ struct DescriptiveComicMetadata {
     QVariant review; // string
     QVariant tags; // string/list
 
+    QVariant translatedTitle; // optional translated display title
+    QVariant circle; // one creator circle
+    QVariant work; // one source IP, or 原创
+    QVariant isAnthology; // bool; writer contains the individual authors
+    QVariant censorship; // censored / uncensored, or NULL
+    QVariant translationStatus; // original / translated / ai, or NULL
+    QVariant translator; // one translator or translation group
+
     // the people and names of a multi-line field, one per line
     QStringList getWriters() const;
     QStringList getPencillers() const;
@@ -72,7 +80,8 @@ struct DescriptiveComicMetadata {
         QVariant DescriptiveComicMetadata::*member;
     };
 
-    static const std::array<Column, 37> &columns();
+    static const std::array<Column, 44> &columns();
+    static const std::array<Column, 7> &personalColumns();
 
     static QStringList assignments();
 
@@ -94,7 +103,7 @@ public:
 
 private:
     DescriptiveComicMetadata values;
-    std::bitset<37> fields;
+    std::bitset<44> fields;
 };
 
 #endif

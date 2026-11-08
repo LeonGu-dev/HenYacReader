@@ -1,3 +1,20 @@
+# MyYACReader
+
+基于 [YACReader](https://github.com/YACReader/yacreader) 的个人漫画阅读器改造，保留 Library / Reader 分离设计。当前 Windows 版本已于 2026-11-08 验收通过。
+
+- 单页编辑漫画信息，支持合同本作者、角色、tag、原创联动及状态按钮。
+- 从压缩包文件名解析信息，生成可编辑的新名称，确认后随保存改名并同步书库。
+- 限制封面布局，保持横竖封面切换时信息面板稳定。
+- 49 项本地 CTest 通过；支持原版数据库数据保留和 10.5.1 结构升级。
+
+[项目文档](docs/myyacreader/README.md) · [字段规则](docs/myyacreader/漫画信息编辑模板.md) · [构建说明](docs/myyacreader/local-build.md) · [已验收变更](docs/myyacreader/CHANGELOG.md)
+
+自动翻页、已有值选择器、进一步功能裁剪和整体 UI 改造仍待后续实现。可运行验收包与个人书库均不纳入 Git。
+
+派生自上游 develop `118213b9ad951cbe9391381877046935c4076a18`。保留原作者署名与 [GPL v3 许可证](COPYING.txt)。以下为上游说明。
+
+---
+
 | Build | Master | Develop |
 |---|---|---|
 |Code Validation |[![Build Status](https://dev.azure.com/luisangelsm/YACReader/_apis/build/status/YACReader.yacreader?branchName=master&jobName=CodeFormatValidation)](https://dev.azure.com/luisangelsm/YACReader/_build/latest?definitionId=1&branchName=master)|[![Build Status](https://dev.azure.com/luisangelsm/YACReader/_apis/build/status/YACReader.yacreader?branchName=develop&jobName=CodeFormatValidation)](https://dev.azure.com/luisangelsm/YACReader/_build/latest?definitionId=1&branchName=develop)|

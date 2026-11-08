@@ -111,3 +111,7 @@
 *.exe binary
 *.out binary
 *.app binary
+
+# Local build helpers use stable line endings.
+scripts/local/*.ps1 text eol=lf
+scripts/local/*.py text eol=lf

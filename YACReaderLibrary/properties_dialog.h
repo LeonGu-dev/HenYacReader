@@ -20,6 +20,7 @@ class QComboBox;
 class QLineEdit;
 class QToolButton;
 class StagedCover;
+class ComicMetadataEditor;
 
 namespace YACReader {
 class CoverLabel;
@@ -43,6 +44,8 @@ private:
     QGridLayout *mainLayout;
 
     QTabWidget *tabBar;
+    ComicMetadataEditor *metadataEditor;
+    QScrollArea *metadataScroll;
 
     QWidget *coverBox;
     YACReader::CoverLabel *cover;

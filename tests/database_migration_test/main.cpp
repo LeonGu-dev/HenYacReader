@@ -1,4 +1,5 @@
 #include "data_base_management.h"
+#include "descriptive_comic_metadata.h"
 #include "yacreader_global.h"
 
 #include <QDir>
@@ -20,6 +21,7 @@ private slots:
     void upgradesHistoricalSchemas_data();
     void upgradesHistoricalSchemas();
     void failedFinalSchemaStepRollsBack();
+    void upgradesPersonalMetadataWithoutChangingExistingRecords();
 
 private:
     static bool createOldLibrary(const QString &libraryPath, const QString &version, const QStringList &extraStatements = { });
@@ -108,6 +110,7 @@ bool DatabaseMigrationTest::createHistoricalLibrary(const QString &libraryPath, 
             { "9.8.0", { "manga" } },
             { "9.13.0", { "added", "type", "editor", "imprint", "teams", "locations", "series", "alternateSeries", "alternateNumber", "alternateCount", "languageISO", "seriesGroup", "mainCharacterOrTeam", "review", "tags" } },
             { "9.16.0", { "imageFiltersJson", "lastTimeImageFiltersSet", "lastTimeCoverSet", "usesExternalCover", "lastTimeMetadataSet" } },
+            { "10.5.1", { "translatedTitle", "circle", "work", "isAnthology", "censorship", "translationStatus", "translator" } },
         };
         for (const auto &[introduced, columns] : comicColumns) {
             if (DataBaseManagement::compareVersions(version, introduced) < 0) {
@@ -209,7 +212,7 @@ void DatabaseMigrationTest::upgradesHistoricalSchemas()
     QVERIFY(freshLibrary.isValid());
     QVERIFY(createHistoricalLibrary(library.path(), version));
     QVERIFY(DataBaseManagement::updateToCurrentVersion(library.path()));
-    QCOMPARE(strings(library.path(), "SELECT version FROM db_info"), QStringList({ "10.5.0" }));
+    QCOMPARE(strings(library.path(), "SELECT version FROM db_info"), QStringList({ DB_VERSION }));
     QCOMPARE(ints(library.path(), "SELECT id FROM comic ORDER BY id"), QList<int>({ 100, 101, 110, 120 }));
     if (DataBaseManagement::compareVersions(version, "8.0.0") >= 0) {
         QCOMPARE(ints(library.path(), "SELECT comic_info_id FROM reading_list_entry ORDER BY ordering"), QList<int>({ 10, 11, 10 }));
@@ -320,6 +323,41 @@ void DatabaseMigrationTest::newLibraryUsesEntryTables()
     const auto columns = strings(library.path(), "SELECT name FROM pragma_table_info('reading_list_entry')");
     QVERIFY(columns.contains("source"));
     QVERIFY(columns.contains("source_format"));
+}
+
+void DatabaseMigrationTest::upgradesPersonalMetadataWithoutChangingExistingRecords()
+{
+    QTemporaryDir library;
+    QVERIFY(library.isValid());
+    QDir().mkpath(LibraryPaths::libraryDataPath(library.path()));
+    QString connection;
+    {
+        auto db = DataBaseManagement::createDatabase(LibraryPaths::libraryDatabasePath(library.path()));
+        connection = db.connectionName();
+        QVERIFY(db.isOpen());
+        QSqlQuery query(db);
+        QVERIFY(query.exec("INSERT INTO comic_info(id,hash,title,writer,currentPage) VALUES(41,'duplicate-content','Same title','Author A',9),(42,'different-content','Same title','Author B',3)"));
+        QVERIFY(query.exec("INSERT INTO placeholder(id,title) VALUES(7,'Missing issue')"));
+        for (const auto &table : { QString("comic_info"), QString("placeholder") }) {
+            for (const auto &column : DescriptiveComicMetadata::personalColumns())
+                QVERIFY(query.exec("ALTER TABLE " + table + " DROP COLUMN " + QString::fromLatin1(column.name)));
+        }
+        QVERIFY(query.exec("UPDATE db_info SET version='10.5.0'"));
+        db.close();
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QVERIFY(DataBaseManagement::updateToCurrentVersion(library.path()));
+    QCOMPARE(strings(library.path(), "SELECT version FROM db_info"), QStringList { DB_VERSION });
+    QCOMPARE(ints(library.path(), "SELECT id FROM comic_info ORDER BY id"), QList<int>({ 41, 42 }));
+    QCOMPARE(ints(library.path(), "SELECT currentPage FROM comic_info ORDER BY id"), QList<int>({ 9, 3 }));
+    QCOMPARE(strings(library.path(), "SELECT title FROM comic_info ORDER BY id"), QStringList({ "Same title", "Same title" }));
+    for (const auto &table : { QString("comic_info"), QString("placeholder") }) {
+        const auto columns = strings(library.path(), "SELECT name FROM pragma_table_info('" + table + "')");
+        for (const auto &column : DescriptiveComicMetadata::personalColumns())
+            QVERIFY(columns.contains(QString::fromLatin1(column.name)));
+    }
+    QCOMPARE(strings(library.path(), "SELECT title FROM placeholder WHERE id=7"), QStringList { "Missing issue" });
+    QCOMPARE(ints(library.path(), "SELECT COUNT(*) FROM comic_info WHERE translatedTitle IS NOT NULL"), QList<int> { 0 });
 }
 
 QTEST_GUILESS_MAIN(DatabaseMigrationTest)

@@ -120,6 +120,7 @@ public:
     static void update(qulonglong libraryId, ComicInfo &comicInfo);
     static void update(ComicDB *comics, QSqlDatabase &db);
     static bool update(ComicInfo *comicInfo, QSqlDatabase &db);
+    static bool updateFromReader(ComicInfo &comicInfo, QSqlDatabase &db);
     static bool updateAdded(ComicInfo *comicInfo, QSqlDatabase &db);
     // writes only the fields in the patch, and marks the comic_info as edited
     static bool updateComicInfoMetadata(ComicInfoId id, const DescriptiveMetadataPatch &patch, QSqlDatabase &db);

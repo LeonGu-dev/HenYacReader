@@ -4,7 +4,7 @@
 <context>
     <name>DBHelper</name>
     <message>
-        <location filename="../YACReaderLibrary/db_helper.cpp" line="1848"/>
+        <location filename="../YACReaderLibrary/db_helper.cpp" line="1884"/>
         <source>The folder entry could not be found in the library database.</source>
         <translation>在庫資料庫中找不到該資料夾的記錄。</translation>
     </message>
@@ -156,241 +156,276 @@ YACReaderLibraryServer 是 YACReaderLibrary 的 headless（無 GUI）版本。
     </message>
     <message>
         <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="101"/>
+        <source>Translated comic title</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="102"/>
+        <source>Creator circle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="103"/>
+        <source>Source work or IP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="104"/>
+        <source>Translator or translation group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="105"/>
+        <source>Censorship status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="106"/>
+        <source>Translation status</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="107"/>
+        <source>Multiple-author anthology</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="108"/>
         <source>Series name</source>
         <translation>系列名稱</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="102"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="109"/>
         <source>Issue number</source>
         <translation>期號</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="103"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="110"/>
         <source>Volume identifier</source>
         <translation>卷冊識別碼</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="104"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="111"/>
         <source>Reading format</source>
         <translation>閱讀格式</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="105"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="112"/>
         <source>Comic rating</source>
         <translation>漫畫評分</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="106"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="113"/>
         <source>Textual tags</source>
         <translation>文字標籤</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="108"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="115"/>
         <source>Writer credit</source>
         <translation>編劇署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="109"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="116"/>
         <source>Penciller credit</source>
         <translation>鉛筆畫師署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="110"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="117"/>
         <source>Inker credit</source>
         <translation>墨線畫師署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="111"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="118"/>
         <source>Colorist credit</source>
         <translation>上色師署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="112"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="119"/>
         <source>Letterer credit</source>
         <translation>嵌字師署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="113"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="120"/>
         <source>Cover artist credit</source>
         <translation>封面畫師署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="114"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="121"/>
         <source>Editor credit</source>
         <translation>編輯署名</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="116"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="123"/>
         <source>Story arc name</source>
         <translation>故事線名稱</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="117"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="124"/>
         <source>Position within a story arc</source>
         <translation>故事線內的位置</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="118"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="125"/>
         <source>Number of issues in a story arc</source>
         <translation>故事線內的期數</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="119"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="126"/>
         <source>Characters appearing in the comic</source>
         <translation>漫畫中出現的角色</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="120"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="127"/>
         <source>Teams appearing in the comic</source>
         <translation>漫畫中出現的團隊</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="121"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="128"/>
         <source>Locations appearing in the comic</source>
         <translation>漫畫中出現的地點</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="122"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="129"/>
         <source>Primary character or team</source>
         <translation>主要角色或團隊</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="123"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="130"/>
         <source>Comic synopsis</source>
         <translation>漫畫簡介</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="125"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="132"/>
         <source>Publisher name</source>
         <translation>出版社名稱</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="126"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="133"/>
         <source>Publishing imprint</source>
         <translation>出版品牌</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="127"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="134"/>
         <source>Publication format</source>
         <translation>出版格式</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="128"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="135"/>
         <source>Recommended age rating</source>
         <translation>建議年齡分級</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="129"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="136"/>
         <source>Comic genre</source>
         <translation>漫畫題材</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="130"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="137"/>
         <source>ISO language code</source>
         <translation>ISO 語言代碼</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="131"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="138"/>
         <source>Publication date metadata</source>
         <translation>出版日期元資料</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="132"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="139"/>
         <source>Series grouping metadata</source>
         <translation>系列分組元資料</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="133"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="140"/>
         <source>Alternate series name</source>
         <translation>其他系列名稱</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="134"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="141"/>
         <source>Alternate issue number</source>
         <translation>其他期號</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="135"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="142"/>
         <source>Alternate series issue count</source>
         <translation>其他系列期數</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="136"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="143"/>
         <source>Number of issues in the series</source>
         <translation>系列期數</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="138"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="145"/>
         <source>Whether the comic is marked as read</source>
         <translation>漫畫是否標記為已讀</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="139"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="146"/>
         <source>Whether reading has started</source>
         <translation>是否已開始閱讀</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="140"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="147"/>
         <source>Whether metadata has been edited</source>
         <translation>元資料是否已編輯</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="141"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="148"/>
         <source>Whether the comic is in color</source>
         <translation>漫畫是否為彩色</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="142"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="149"/>
         <source>Number of pages</source>
         <translation>頁數</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="143"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="150"/>
         <source>Comic file name</source>
         <translation>漫畫檔案名稱</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="144"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="151"/>
         <source>When the item was added</source>
         <translation>項目的新增時間</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="145"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="152"/>
         <source>When the comic was last opened</source>
         <translation>漫畫上次開啟時間</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="146"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="153"/>
         <source>Comic notes</source>
         <translation>漫畫備註</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="147"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="154"/>
         <source>Review text</source>
         <translation>評論文字</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="149"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="156"/>
         <source>Parent folder name</source>
         <translation>上層資料夾名稱</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="150"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="157"/>
         <source>Default reading format for the folder</source>
         <translation>資料夾的預設閱讀格式</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="151"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="158"/>
         <source>Whether the folder is complete</source>
         <translation>資料夾是否完整</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="152"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="159"/>
         <source>Whether the folder is marked as finished</source>
         <translation>資料夾是否標記為已完結</translation>
     </message>
     <message>
-        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="153"/>
+        <location filename="../YACReaderLibrary/db/search_field_registry.cpp" line="160"/>
         <source>When the folder was updated</source>
         <translation>資料夾的更新時間</translation>
     </message>

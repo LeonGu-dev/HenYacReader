@@ -1,6 +1,7 @@
 #include "yacreader_global.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QFileInfo>
 #include <QLibrary>
 #include <QModelIndex>
@@ -9,11 +10,26 @@ using namespace YACReader;
 
 QString YACReader::getSettingsPath()
 {
+    const auto dataDirectory = qEnvironmentVariable("YACREADER_DATA_DIR");
+    if (!dataDirectory.isEmpty())
+        return QDir(dataDirectory).absoluteFilePath(QCoreApplication::applicationName());
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+}
+
+QString YACReader::libraryLocalServerName()
+{
+    const auto dataDirectory = qEnvironmentVariable("YACREADER_DATA_DIR");
+    if (dataDirectory.isEmpty())
+        return QString::fromLatin1(YACREADERLIBRARY_GUID);
+    const auto path = QDir(dataDirectory).absolutePath();
+    return QString::fromLatin1(YACREADERLIBRARY_GUID) + "-" + QString::fromLatin1(QCryptographicHash::hash(path.toUtf8(), QCryptographicHash::Sha1).toHex());
 }
 
 QString YACReader::getCommonSettingsPath()
 {
+    const auto dataDirectory = qEnvironmentVariable("YACREADER_DATA_DIR");
+    if (!dataDirectory.isEmpty())
+        return QDir(dataDirectory).absolutePath();
     const auto organizationName = QCoreApplication::organizationName().trimmed();
     const auto basePath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
 

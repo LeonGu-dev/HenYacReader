@@ -3,48 +3,69 @@
 #include <QSqlQuery>
 #include <QSqlRecord>
 
-const std::array<DescriptiveComicMetadata::Column, 37> &DescriptiveComicMetadata::columns()
+#include <algorithm>
+
+const std::array<DescriptiveComicMetadata::Column, 7> &DescriptiveComicMetadata::personalColumns()
 {
     using M = DescriptiveComicMetadata;
-    static const std::array<Column, 37> columns = { {
-            { "title", "TEXT", &M::title },
-            { "number", "TEXT", &M::number },
-            { "isBis", "BOOLEAN", &M::isBis },
-            { "count", "INTEGER", &M::count },
-            { "volume", "TEXT", &M::volume },
-            { "storyArc", "TEXT", &M::storyArc },
-            { "arcNumber", "TEXT", &M::arcNumber },
-            { "arcCount", "INTEGER", &M::arcCount },
-            { "genere", "TEXT", &M::genere },
-            { "writer", "TEXT", &M::writer },
-            { "penciller", "TEXT", &M::penciller },
-            { "inker", "TEXT", &M::inker },
-            { "colorist", "TEXT", &M::colorist },
-            { "letterer", "TEXT", &M::letterer },
-            { "coverArtist", "TEXT", &M::coverArtist },
-            { "date", "TEXT", &M::date },
-            { "publisher", "TEXT", &M::publisher },
-            { "format", "TEXT", &M::format },
-            { "color", "BOOLEAN", &M::color },
-            { "ageRating", "TEXT", &M::ageRating },
-            { "synopsis", "TEXT", &M::synopsis },
-            { "characters", "TEXT", &M::characters },
-            { "notes", "TEXT", &M::notes },
-            { "comicVineID", "TEXT", &M::comicVineID },
-            { "editor", "TEXT", &M::editor },
-            { "imprint", "TEXT", &M::imprint },
-            { "teams", "TEXT", &M::teams },
-            { "locations", "TEXT", &M::locations },
-            { "series", "TEXT", &M::series },
-            { "alternateSeries", "TEXT", &M::alternateSeries },
-            { "alternateNumber", "TEXT", &M::alternateNumber },
-            { "alternateCount", "INTEGER", &M::alternateCount },
-            { "languageISO", "TEXT", &M::languageISO },
-            { "seriesGroup", "TEXT", &M::seriesGroup },
-            { "mainCharacterOrTeam", "TEXT", &M::mainCharacterOrTeam },
-            { "review", "TEXT", &M::review },
-            { "tags", "TEXT", &M::tags },
+    static const std::array<Column, 7> columns = { {
+            { "translatedTitle", "TEXT", &M::translatedTitle },
+            { "circle", "TEXT", &M::circle },
+            { "work", "TEXT", &M::work },
+            { "isAnthology", "BOOLEAN", &M::isAnthology },
+            { "censorship", "TEXT", &M::censorship },
+            { "translationStatus", "TEXT", &M::translationStatus },
+            { "translator", "TEXT", &M::translator },
     } };
+    return columns;
+}
+
+const std::array<DescriptiveComicMetadata::Column, 44> &DescriptiveComicMetadata::columns()
+{
+    using M = DescriptiveComicMetadata;
+    static const std::array<Column, 44> columns = [] {
+        std::array<Column, 44> result = { {
+                { "title", "TEXT", &M::title },
+                { "number", "TEXT", &M::number },
+                { "isBis", "BOOLEAN", &M::isBis },
+                { "count", "INTEGER", &M::count },
+                { "volume", "TEXT", &M::volume },
+                { "storyArc", "TEXT", &M::storyArc },
+                { "arcNumber", "TEXT", &M::arcNumber },
+                { "arcCount", "INTEGER", &M::arcCount },
+                { "genere", "TEXT", &M::genere },
+                { "writer", "TEXT", &M::writer },
+                { "penciller", "TEXT", &M::penciller },
+                { "inker", "TEXT", &M::inker },
+                { "colorist", "TEXT", &M::colorist },
+                { "letterer", "TEXT", &M::letterer },
+                { "coverArtist", "TEXT", &M::coverArtist },
+                { "date", "TEXT", &M::date },
+                { "publisher", "TEXT", &M::publisher },
+                { "format", "TEXT", &M::format },
+                { "color", "BOOLEAN", &M::color },
+                { "ageRating", "TEXT", &M::ageRating },
+                { "synopsis", "TEXT", &M::synopsis },
+                { "characters", "TEXT", &M::characters },
+                { "notes", "TEXT", &M::notes },
+                { "comicVineID", "TEXT", &M::comicVineID },
+                { "editor", "TEXT", &M::editor },
+                { "imprint", "TEXT", &M::imprint },
+                { "teams", "TEXT", &M::teams },
+                { "locations", "TEXT", &M::locations },
+                { "series", "TEXT", &M::series },
+                { "alternateSeries", "TEXT", &M::alternateSeries },
+                { "alternateNumber", "TEXT", &M::alternateNumber },
+                { "alternateCount", "INTEGER", &M::alternateCount },
+                { "languageISO", "TEXT", &M::languageISO },
+                { "seriesGroup", "TEXT", &M::seriesGroup },
+                { "mainCharacterOrTeam", "TEXT", &M::mainCharacterOrTeam },
+                { "review", "TEXT", &M::review },
+                { "tags", "TEXT", &M::tags },
+        } };
+        std::copy(personalColumns().begin(), personalColumns().end(), result.begin() + 37);
+        return result;
+    }();
     return columns;
 }
 

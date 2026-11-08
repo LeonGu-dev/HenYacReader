@@ -132,6 +132,12 @@ qt_add_executable(YACReaderLibrary WIN32
     rename_library_dialog.cpp
     properties_dialog.h
     properties_dialog.cpp
+    comic_metadata_editor.h
+    comic_metadata_editor.cpp
+    comic_filename.h
+    comic_filename.cpp
+    staged_comic_rename.h
+    staged_comic_rename.cpp
     options_dialog.h
     options_dialog.cpp
     search_syntax_dialog.h
@@ -240,6 +246,7 @@ qt_add_executable(YACReaderLibrary WIN32
     ${PROJECT_SOURCE_DIR}/common/themes/theme_manager.cpp
 )
 yacreader_apply_build_options(YACReaderLibrary)
+target_compile_options(YACReaderLibrary PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 
 # macOS-specific sources
 if(APPLE)

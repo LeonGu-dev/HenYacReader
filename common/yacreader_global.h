@@ -16,7 +16,7 @@ class QLibrary;
 
 // Used to check if the database needs to be updated, the version is stored in the database.
 // This value is only incremented when the database structure changes.
-#define DB_VERSION "10.5.0"
+#define DB_VERSION "10.5.1"
 
 #define IMPORT_COMIC_INFO_XML_METADATA "IMPORT_COMIC_INFO_XML_METADATA"
 #define ORGANIZE_FILES_RELATIVE_TO_ROOT "ORGANIZE_FILES_RELATIVE_TO_ROOT"
@@ -114,6 +114,7 @@ QDataStream &operator<<(QDataStream &stream, const OpenComicSource &source);
 QDataStream &operator>>(QDataStream &stream, OpenComicSource &source);
 
 QString getSettingsPath();
+QString libraryLocalServerName();
 QString getCommonSettingsPath();
 QString getCommonSettingsFilePath();
 QString getPluginsPath();

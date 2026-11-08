@@ -652,6 +652,9 @@ bool DataBaseManagement::createTables(QSqlDatabase &database)
 
 bool DataBaseManagement::createComicInfoTable(QSqlDatabase &database, QString tableName)
 {
+    QString personalDefinitions;
+    for (const auto &column : DescriptiveComicMetadata::personalColumns())
+        personalDefinitions += "," + QString::fromLatin1(column.name) + " " + QString::fromLatin1(column.sqlType);
     QSqlQuery queryComicInfo(database);
     queryComicInfo.prepare("CREATE TABLE " + tableName + " ("
                                                          "id INTEGER PRIMARY KEY,"
@@ -731,8 +734,8 @@ bool DataBaseManagement::createComicInfoTable(QSqlDatabase &database, QString ta
                                                          "lastTimeImageFiltersSet INTEGER DEFAULT 0,"
                                                          "lastTimeCoverSet INTEGER DEFAULT 0,"
                                                          "usesExternalCover BOOLEAN DEFAULT 0,"
-                                                         "lastTimeMetadataSet INTEGER DEFAULT 0"
-                                                         ")");
+                                                         "lastTimeMetadataSet INTEGER DEFAULT 0" +
+                           personalDefinitions + ")");
 
     return queryComicInfo.exec();
 }
@@ -1615,6 +1618,7 @@ bool DataBaseManagement::updateToCurrentVersion(const QString &libraryPath, bool
     const bool pre9_14 = compareVersions(oldVersion, "9.14.0") < 0;
     const bool pre9_16 = compareVersions(oldVersion, "9.16.0") < 0;
     const bool pre10_5 = compareVersions(oldVersion, "10.5.0") < 0;
+    const bool prePersonalMetadata = compareVersions(oldVersion, "10.5.1") < 0;
 
     QString connectionName = "";
     bool returnValue = true;
@@ -1834,6 +1838,19 @@ bool DataBaseManagement::updateToCurrentVersion(const QString &libraryPath, bool
                     QSqlQuery dropWrongIndexes(db);
                     for (const auto index : { "comic_label_ordering_index", "reading_list_ordering_index", "comic_reading_list_ordering_index", "comic_default_reading_list_ordering_index" }) {
                         returnValue = returnValue && dropWrongIndexes.exec(QString("DROP INDEX IF EXISTS %1").arg(index));
+                    }
+                }
+
+                if (prePersonalMetadata && returnValue) {
+                    for (const auto &table : { QString("comic_info"), QString("placeholder") }) {
+                        const auto existingColumns = db.record(table);
+                        QStringList missingColumns;
+                        for (const auto &column : DescriptiveComicMetadata::personalColumns()) {
+                            const auto name = QString::fromLatin1(column.name);
+                            if (existingColumns.indexOf(name) < 0)
+                                missingColumns.append(name + " " + QString::fromLatin1(column.sqlType));
+                        }
+                        returnValue = addColumns(table, missingColumns, db) && returnValue;
                     }
                 }
 

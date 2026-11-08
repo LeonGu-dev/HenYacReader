@@ -90,20 +90,24 @@ LibraryWindow::LibraryWindow()
 
     setupUI();
 
-    loadLibraries();
+    // Adding the first library can open a modal upgrade or recovery prompt.
+    // Let main() show the window before entering that nested event loop.
+    QTimer::singleShot(0, this, [this] {
+        loadLibraries();
 
-    if (libraries.isEmpty()) {
-        showNoLibrariesWidget();
-    } else {
-        showRootWidget();
-        selectedLibrary->setCurrentIndex(0);
-    }
+        if (libraries.isEmpty()) {
+            showNoLibrariesWidget();
+        } else {
+            showRootWidget();
+            selectedLibrary->setCurrentIndex(0);
+        }
 
-    if (startsHiddenInTray()) {
-        pendingAfterLaunchTasks = true;
-    } else {
-        afterLaunchTasks();
-    }
+        if (startsHiddenInTray()) {
+            pendingAfterLaunchTasks = true;
+        } else {
+            afterLaunchTasks();
+        }
+    });
 }
 
 void LibraryWindow::afterLaunchTasks()

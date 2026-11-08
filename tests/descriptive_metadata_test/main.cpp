@@ -2,14 +2,17 @@
 #include "data_base_management.h"
 #include "db_helper.h"
 #include "descriptive_comic_metadata.h"
+#include "staged_comic_rename.h"
 #include "table_projection.h"
 #include "yacreader_global.h"
 
+#include <QFile>
 #include <QMap>
 #include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QSqlRecord>
+#include <QTemporaryDir>
 #include <QTest>
 
 class DescriptiveMetadataTest : public QObject
@@ -26,6 +29,8 @@ private slots:
     void patchWritesOnlyItsFields();
     void emptyPatchWritesNothing();
     void typeAndCoverWritesKeepOtherColumns();
+    void readerProgressPreservesPersonalMetadata();
+    void filenameAndMetadataCommitTogetherAndRollbackOnFailure();
 
 private:
     QSqlDatabase db;
@@ -67,8 +72,8 @@ void DescriptiveMetadataTest::columnsMatchExistingSchema()
     QMap<QString, QString> types;
     while (q.next())
         types.insert(q.value(1).toString(), q.value(2).toString());
-    QCOMPARE(types.size(), 63);
-    QCOMPARE(DescriptiveComicMetadata::columns().size(), size_t(37));
+    QCOMPARE(types.size(), 70);
+    QCOMPARE(DescriptiveComicMetadata::columns().size(), size_t(44));
     QSet<QString> names;
     for (const auto &column : DescriptiveComicMetadata::columns()) {
         const auto name = QString::fromLatin1(column.name);
@@ -316,6 +321,90 @@ void DescriptiveMetadataTest::typeAndCoverWritesKeepOtherColumns()
     QCOMPARE(loaded.currentPage, 7);
     QCOMPARE(loaded.numPages.toInt(), 20);
     QCOMPARE(loaded.hash, QString("real-stored-hash"));
+}
+
+void DescriptiveMetadataTest::readerProgressPreservesPersonalMetadata()
+{
+    auto original = loadInfo(1);
+    for (const auto &column : DescriptiveComicMetadata::personalColumns())
+        original.*column.member = QByteArray(column.sqlType) == "BOOLEAN" ? QVariant(true) : QVariant(QString("saved:%1").arg(column.name));
+    QVERIFY(DBHelper::update(&original, db));
+    auto progress = loadInfo(1);
+    for (const auto &column : DescriptiveComicMetadata::personalColumns())
+        progress.*column.member = QVariant();
+    progress.title = "Stale reader title";
+    progress.writer = "Stale reader author";
+    progress.currentPage = 12;
+    QVERIFY(DBHelper::updateFromReader(progress, db));
+    const auto saved = loadInfo(1);
+    QCOMPARE(saved.currentPage, 12);
+    for (const auto &column : DescriptiveComicMetadata::columns())
+        QCOMPARE(saved.*column.member, original.*column.member);
+}
+
+void DescriptiveMetadataTest::filenameAndMetadataCommitTogetherAndRollbackOnFailure()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto source = directory.filePath("old.zip");
+    const auto destination = directory.filePath("new.zip");
+    {
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("unchanged archive");
+    }
+    QSqlQuery query(db);
+    QVERIFY(query.exec("PRAGMA foreign_keys=ON"));
+    QVERIFY(query.exec("CREATE TABLE comic(id INTEGER PRIMARY KEY, parentId INTEGER, comicInfoId INTEGER, fileName TEXT, path TEXT)"));
+    QVERIFY(query.exec("INSERT INTO comic VALUES(1,1,1,'old.zip','/old.zip'),(2,1,1,'another.zip','/another.zip')"));
+    QVERIFY(query.exec("CREATE TABLE commit_guard(id INTEGER REFERENCES comic(id) DEFERRABLE INITIALLY DEFERRED)"));
+    QString error;
+    {
+        QVERIFY(db.transaction());
+        DescriptiveMetadataPatch patch;
+        patch.set(&DescriptiveComicMetadata::title, "Changed");
+        QVERIFY(DBHelper::updateComicInfoMetadata(ComicInfoId(1), patch, db));
+        StagedComicRename rename(source, destination);
+        QVERIFY(rename.install(error));
+        QVERIFY(DBHelper::moveComic(1, 1, "new.zip", "/new.zip", db));
+        // A late commit failure must restore the filename and the metadata.
+        QVERIFY(query.exec("INSERT INTO commit_guard VALUES(999)"));
+        QVERIFY(!db.commit());
+        QVERIFY(db.rollback());
+        QVERIFY(rename.restore(error));
+    }
+    QVERIFY(QFile::exists(source));
+    QVERIFY(!QFile::exists(destination));
+    QCOMPARE(loadInfo(1).title.toString(), QString("Original"));
+    QVERIFY(query.exec("SELECT path FROM comic WHERE id=1"));
+    QVERIFY(query.next());
+    QCOMPARE(query.value(0).toString(), QString("/old.zip"));
+    query.finish();
+    {
+        QVERIFY(db.transaction());
+        DescriptiveMetadataPatch patch;
+        patch.set(&DescriptiveComicMetadata::title, "Changed");
+        QVERIFY(DBHelper::updateComicInfoMetadata(ComicInfoId(1), patch, db));
+        StagedComicRename rename(source, destination);
+        QVERIFY(rename.install(error));
+        QVERIFY(DBHelper::moveComic(1, 1, "new.zip", "/new.zip", db));
+        QVERIFY(db.commit());
+        rename.finish();
+    }
+    QVERIFY(!QFile::exists(source));
+    QVERIFY(QFile::exists(destination));
+    QCOMPARE(loadInfo(1).title.toString(), QString("Changed"));
+    QVERIFY(query.exec("SELECT id,comicInfoId,path FROM comic ORDER BY id"));
+    QVERIFY(query.next());
+    QCOMPARE(query.value(0).toInt(), 1);
+    QCOMPARE(query.value(1).toInt(), 1);
+    QCOMPARE(query.value(2).toString(), QString("/new.zip"));
+    QVERIFY(query.next());
+    QCOMPARE(query.value(2).toString(), QString("/another.zip"));
+    QCOMPARE(loadInfo(1).currentPage, 7);
+    QFile file(destination);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), QByteArray("unchanged archive"));
 }
 
 QTEST_GUILESS_MAIN(DescriptiveMetadataTest)

@@ -1036,10 +1036,22 @@ void DBHelper::update(qulonglong libraryId, ComicInfo &comicInfo)
     QString connectionName = "";
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(LibraryPaths::libraryDataPath(libraryPath));
-        DBHelper::update(&comicInfo, db);
+        DBHelper::updateFromReader(comicInfo, db);
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);
+}
+
+bool DBHelper::updateFromReader(ComicInfo &comicInfo, QSqlDatabase &db)
+{
+    // Catalog metadata belongs to the library. A reader may hold an older
+    // snapshot, and its existing protocol omits the new personal fields.
+    const auto stored = loadComicInfo(comicInfo.hash, db);
+    if (!stored || stored->id != comicInfo.id)
+        return false;
+    for (const auto &column : DescriptiveComicMetadata::columns())
+        comicInfo.*column.member = (*stored).*column.member;
+    return update(&comicInfo, db);
 }
 
 bool DBHelper::update(ComicInfo *comicInfo, QSqlDatabase &db)

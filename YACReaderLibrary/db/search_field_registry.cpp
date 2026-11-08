@@ -59,8 +59,8 @@ const std::map<SearchFieldType, std::vector<std::string>> &searchFieldNames()
 {
     static const std::map<SearchFieldType, std::vector<std::string>> names {
         { SearchFieldType::Numeric, { "numpages", "count", "arccount", "alternateCount", "rating" } },
-        { SearchFieldType::Text, { "date", "number", "arcnumber", "title", "volume", "storyarc", "genere", "writer", "penciller", "inker", "colorist", "letterer", "coverartist", "publisher", "format", "agerating", "synopsis", "characters", "notes", "editor", "imprint", "teams", "locations", "series", "alternateSeries", "alternateNumber", "languageISO", "seriesGroup", "mainCharacterOrTeam", "review", "tags" } },
-        { SearchFieldType::Boolean, { "color", "read", "edited", "hasBeenOpened" } },
+        { SearchFieldType::Text, { "date", "number", "arcnumber", "title", "volume", "storyarc", "genere", "writer", "penciller", "inker", "colorist", "letterer", "coverartist", "publisher", "format", "agerating", "synopsis", "characters", "notes", "editor", "imprint", "teams", "locations", "series", "alternateSeries", "alternateNumber", "languageISO", "seriesGroup", "mainCharacterOrTeam", "review", "tags", "translatedTitle", "circle", "work", "censorship", "translationStatus", "translator" } },
+        { SearchFieldType::Boolean, { "color", "read", "edited", "hasBeenOpened", "isAnthology" } },
         { SearchFieldType::Date, { "added", "lastTimeOpened" } },
         { SearchFieldType::DateFolder, { "added", "updated" } },
         { SearchFieldType::Filename, { "filename" } },
@@ -98,6 +98,13 @@ const QList<SearchFieldDefinition> &searchFieldDefinitions()
 
     static const QList<SearchFieldDefinition> definitions {
         field("title", "Title", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Comic title"), "title:Moonbound", Type::Text, Category::Common),
+        field("translatedTitle", "Translated title", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Translated comic title"), "translatedTitle:Moonbound", Type::Text, Category::Common),
+        field("circle", "Circle", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Creator circle"), "circle:Studio", Type::Text, Category::Common),
+        field("work", "Work / IP", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Source work or IP"), "work:Original", Type::Text, Category::Common),
+        field("translator", "Translator", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Translator or translation group"), "translator:Group", Type::Text, Category::Common),
+        field("censorship", "Censorship", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Censorship status"), "censorship==uncensored", Type::Text, Category::Common),
+        field("translationStatus", "Translation", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Translation status"), "translationStatus==translated", Type::Text, Category::Common),
+        field("isAnthology", "Anthology", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Multiple-author anthology"), "isAnthology:true", Type::Boolean, Category::Common),
         field("series", "Series", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Series name"), "series:\"Starfall Chronicles\"", Type::Text, Category::Common),
         field("number", "Number", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Issue number"), "number>=10", Type::Text, Category::Common),
         field("volume", "Volume", QT_TRANSLATE_NOOP("SearchFieldRegistry", "Volume identifier"), "volume:2", Type::Text, Category::Common),
