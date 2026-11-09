@@ -1131,6 +1131,10 @@ void ComicModel::setupFavoritesModelData(const QString &databasePath)
 
 QList<ComicItem> ComicModel::createReadingModelData(const QString &databasePath) const
 {
+    // the comics being read, the most recently opened first; it is a short list, not a
+    // view of every unfinished comic of the library
+    constexpr int readingNowLimit = 20;
+
     QList<ComicItem> modelData;
 
     QString connectionName = "";
@@ -1141,7 +1145,7 @@ QList<ComicItem> ComicModel::createReadingModelData(const QString &databasePath)
         selectQuery.prepare("SELECT " + ComicDB::selectList("c", "ci") + " "
                                                                          "FROM comic c INNER JOIN comic_info ci ON (c.comicInfoId = ci.id) "
                                                                          "WHERE ci.hasBeenOpened = 1 AND ci.read = 0 "
-                                                                         "ORDER BY ci.lastTimeOpened DESC");
+                                                                         "ORDER BY ci.lastTimeOpened DESC LIMIT " + QString::number(readingNowLimit));
         selectQuery.exec();
 
         modelData = ComicItems::fromQuery(selectQuery);
@@ -1170,12 +1174,16 @@ void ComicModel::setupReadingModelData(const QString &databasePath)
 
 QList<ComicItem> ComicModel::createRecentModelData(const QString &databasePath) const
 {
+    // what was added in the last week, newest first; the "new" marks of the folders keep
+    // using the configured recent range instead
+    constexpr int recentlyAddedDays = 7;
+
     QList<ComicItem> modelData;
 
     QString connectionName = "";
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(databasePath);
-        modelData = ComicItems::loadRecent(recentDays, db);
+        modelData = ComicItems::loadRecent(recentlyAddedDays, db);
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);

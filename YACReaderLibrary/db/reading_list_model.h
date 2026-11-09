@@ -121,6 +121,7 @@ signals:
 private:
     void cleanAll();
     void setupReadingListsData(const QList<::ReadingList> &lists, ReadingListItem *parent, const QHash<qulonglong, ListFolderItem *> &folders);
+    QList<SpecialListItem *> setupSpecialLists(QSqlDatabase &db);
     void setupLabels(QSqlDatabase &db);
     void setupSmartLists(QSqlDatabase &db);
     void setupReadingLists(QSqlDatabase &db);
@@ -133,11 +134,12 @@ private:
     int labelPosition(const LabelItem *item) const;
     void reorderingChildren(QList<ReadingListItem *> children);
 
-    // top level rows: labels, a separator, the smart lists section and a separator when it
+    // top level rows: special lists, a separator, labels, a separator, the smart lists section and a separator when it
     // has rows, the reading lists section
     int labelsStart() const;
     int smartListsStart() const;
     int readingListsStart() const;
+    bool rowIsSpecialList(int row, const QModelIndex &parent = QModelIndex()) const;
     bool rowIsLabel(int row, const QModelIndex &parent = QModelIndex()) const;
 
     // where an item is: its folder (or the root of its section) for folders, smart lists, and top level reading lists
@@ -169,6 +171,9 @@ private:
     ReadingListItem *childListDropTarget(ReadingListItem *item, int row, const QModelIndex &parent) const;
     bool dropComics(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent);
     bool dropSublist(ReadingListItem *item, ReadingListItem *destination);
+    // Special lists
+    QList<SpecialListItem *> specialLists;
+
     // Label
     QList<LabelItem *> labels;
 
@@ -181,6 +186,7 @@ private:
     QMap<unsigned long long int, ReadingListItem *> items; // lists relationship
 
     // separators
+    ReadingListSeparatorItem *separator1;
     ReadingListSeparatorItem *separator2;
     ReadingListSeparatorItem *separator3;
 

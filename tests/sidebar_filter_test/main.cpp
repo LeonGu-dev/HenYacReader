@@ -79,12 +79,10 @@ void SidebarFilterTest::threePanesDragAndPersistWithReadingLists()
     QCOMPARE(splitter->indexOf(sidebar->readingListsView), 2);
     QVERIFY(sidebar->readingListsView->isVisible());
     QVERIFY(sidebar->readingListsTitle->isVisible());
-    // the old default lists are not offered any more: the pane only lists the user lists
-    for (int row = 0; row < lists.rowCount(); ++row) {
-        const auto type = lists.data(lists.index(row, 0), ReadingListModel::TypeListsRole).toInt();
-        QVERIFY(type != ReadingListModel::SpecialList);
-    }
-    QVERIFY(!lists.indexOf(ReadingListModel::SpecialList, 1).isValid());
+    // the two fixed rows come first, filled by the library; favorites has no row here
+    QCOMPARE(lists.index(0, 0).data().toString(), QString("正在阅读"));
+    QCOMPARE(lists.index(1, 0).data().toString(), QString("最近添加"));
+    QVERIFY(!lists.indexOf(ReadingListModel::SpecialList, int(ReadingListModel::TypeSpecialList::Favorites)).isValid());
     const auto collection = lists.indexOf(ReadingListModel::ReadingList, 1);
     QVERIFY(collection.isValid());
     sidebar->readingListsView->scrollTo(collection);

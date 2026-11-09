@@ -8,7 +8,9 @@
 #include "yacreader_reading_lists_view.h"
 #include "yacreader_titled_toolbar.h"
 
+#include <QAbstractItemView>
 #include <QCoreApplication>
+#include <QFrame>
 #include <QLayout>
 #include <QMouseEvent>
 #include <QPainter>
@@ -50,6 +52,12 @@ YACReaderSideBar::YACReaderSideBar(QWidget *parent)
     foldersView = new YACReaderFoldersView;
     readingListsView = new YACReaderReadingListsView;
     selectedLibrary = new YACReaderLibraryListWidget;
+
+    // the tree views share the sidebar background instead of painting a white base
+    for (auto *view : { static_cast<QAbstractItemView *>(foldersView), static_cast<QAbstractItemView *>(readingListsView) }) {
+        view->setFrameShape(QFrame::NoFrame);
+        view->viewport()->setAutoFillBackground(false);
+    }
 
     // Titles will be set from theme in applyTheme
     librariesTitle = new YACReaderTitledToolBar("");

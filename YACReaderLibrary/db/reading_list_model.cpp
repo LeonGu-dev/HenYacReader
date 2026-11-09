@@ -16,6 +16,7 @@
 ReadingListModel::ReadingListModel(QObject *parent)
     : QAbstractItemModel(parent), rootItem(0)
 {
+    separator1 = new ReadingListSeparatorItem;
     separator2 = new ReadingListSeparatorItem;
     separator3 = new ReadingListSeparatorItem;
 }
@@ -23,6 +24,7 @@ ReadingListModel::ReadingListModel(QObject *parent)
 ReadingListModel::~ReadingListModel()
 {
     cleanAll();
+    delete separator1;
     delete separator2;
     delete separator3;
 }
@@ -154,6 +156,12 @@ QModelIndex ReadingListModel::index(int row, int column, const QModelIndex &pare
         return QModelIndex();
 
     if (!parent.isValid()) {
+        if (rowIsSpecialList(row, parent))
+            return createIndex(row, column, specialLists.at(row));
+
+        if (row == specialLists.count())
+            return createIndex(row, column, separator1);
+
         if (rowIsLabel(row, parent))
             return createIndex(row, column, labels.at(row - labelsStart()));
 
@@ -317,9 +325,8 @@ void ReadingListModel::setupReadingListsData(QString path)
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(path);
 
-        // The old default lists (Favorites, Reading, Recent) are not rows any more:
-        // favorites are a comic field and the other two are not part of the book list pane.
-        // Their model classes stay for the library data and the old entry points.
+        // setup special lists
+        specialLists = setupSpecialLists(db);
 
         // separator--------------------------------------------
 
@@ -674,8 +681,10 @@ void ReadingListModel::cleanAll()
         delete smartListsRoot;
         delete readingListsRoot;
 
+        qDeleteAll(specialLists);
         qDeleteAll(labels);
 
+        specialLists.clear();
         labels.clear();
 
         items.clear();
@@ -704,6 +713,19 @@ void ReadingListModel::setupReadingListsData(const QList<::ReadingList> &lists, 
 
         items.insert(rli->getId(), rli);
     }
+}
+
+QList<SpecialListItem *> ReadingListModel::setupSpecialLists(QSqlDatabase &db)
+{
+    Q_UNUSED(db);
+
+    // The two fixed rows above the user lists. Favorites is a comic field now and has no
+    // row here; the library fills these two from the reading progress and the adding dates.
+    QList<SpecialListItem *> list;
+    list << new SpecialListItem(::SpecialList { 0, tr("正在阅读") });
+    list << new SpecialListItem(::SpecialList { 2, tr("最近添加") });
+
+    return list;
 }
 
 void ReadingListModel::setupLabels(QSqlDatabase &db)
@@ -829,8 +851,7 @@ void ReadingListModel::reorderingChildren(QList<ReadingListItem *> children)
 
 int ReadingListModel::labelsStart() const
 {
-    // labels are the first section of the pane now that the default lists are gone
-    return 0;
+    return specialLists.count() + 1;
 }
 
 int ReadingListModel::smartListsStart() const
@@ -842,6 +863,17 @@ int ReadingListModel::readingListsStart() const
 {
     const auto smartRows = smartListsRoot->childCount();
     return smartListsStart() + smartRows + (smartRows > 0 ? 1 : 0);
+}
+
+bool ReadingListModel::rowIsSpecialList(int row, const QModelIndex &parent) const
+{
+    if (parent.isValid())
+        return false; // by now no sublists in special list
+
+    if (row >= 0 && row < specialLists.count())
+        return true;
+
+    return false;
 }
 
 bool ReadingListModel::rowIsLabel(int row, const QModelIndex &parent) const
