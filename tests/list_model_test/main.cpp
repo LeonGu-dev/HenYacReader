@@ -39,7 +39,8 @@ private slots:
     void addedListsHaveTheirOrder();
     void renameChangesTheRowAndTheDatabase();
     void deleteRemovesTheSublist();
-    void droppedComicsGiveComicInfoToListsAndComicsToFavorites();
+    void droppedComicsGiveComicInfoToListsAndLabels();
+    void defaultListsAreNotRows();
     void smartListsComeAfterTheLabels();
     void comicsCannotBeDroppedOnASmartList();
     void smartListsCanBeAddedEditedAndDeleted();
@@ -265,15 +266,13 @@ void ListModelTest::deleteRemovesTheSublist()
     QCOMPARE(value("SELECT count(*) FROM reading_list WHERE id = 2"), QString("0"));
 }
 
-void ListModelTest::droppedComicsGiveComicInfoToListsAndComicsToFavorites()
+void ListModelTest::droppedComicsGiveComicInfoToListsAndLabels()
 {
     ReadingListModel model;
     model.setupReadingListsData(dataPath);
 
-    QList<qulonglong> favorites;
     QList<QPair<QList<ComicRowId>, qulonglong>> labels;
     QList<QPair<QList<ComicRowId>, qulonglong>> lists;
-    connect(&model, &ReadingListModel::addComicsToFavorites, this, [&](const QList<qulonglong> &comicIds) { favorites = comicIds; });
     connect(&model, &ReadingListModel::addComicsToLabel, this, [&](const QList<ComicRowId> &rows, qulonglong id) { labels.append({ rows, id }); });
     connect(&model, &ReadingListModel::addComicsToReadingList, this, [&](const QList<ComicRowId> &rows, qulonglong id) { lists.append({ rows, id }); });
 
@@ -286,7 +285,6 @@ void ListModelTest::droppedComicsGiveComicInfoToListsAndComicsToFavorites()
 
     QVERIFY(model.dropMimeData(&data, Qt::CopyAction, -1, 0, find(model, "Alpha")));
     QVERIFY(model.dropMimeData(&data, Qt::CopyAction, -1, 0, find(model, "Events")));
-    QVERIFY(model.dropMimeData(&data, Qt::CopyAction, -1, 0, model.index(0, 0)));
 
     QCOMPARE(labels.size(), 1);
     QVERIFY(labels.first().first == QList<ComicRowId>({ ComicId(9), ComicId(9) }));
@@ -294,12 +292,14 @@ void ListModelTest::droppedComicsGiveComicInfoToListsAndComicsToFavorites()
     QCOMPARE(lists.size(), 1);
     QCOMPARE(lists.first().second, 1ULL);
 
+    // the default lists are not rows any more, so there is no row to drop comics on for favorites
+    QVERIFY(!find(model, "Favorites").isValid());
+
     // a drag names its rows, so a placeholder or a deleted comic can be added too
     YACReader::setRowsMimeData(&data, { ListItemId { ListKind::ReadingList, 7 }, PlaceholderId(4), ListItemId { ListKind::Label, 3 } });
     QVERIFY(model.dropMimeData(&data, Qt::CopyAction, -1, 0, find(model, "Events")));
     QCOMPARE(lists.size(), 2);
     QVERIFY(lists.last().first == QList<ComicRowId>({ ListItemId { ListKind::ReadingList, 7 }, PlaceholderId(4), ListItemId { ListKind::Label, 3 } }));
-    QCOMPARE(favorites, QList<qulonglong>({ 9, 9 }));
 }
 
 QStringList typesOfRows(ReadingListModel &model)
@@ -333,20 +333,39 @@ QStringList typesOfRows(ReadingListModel &model)
     return types;
 }
 
+void ListModelTest::defaultListsAreNotRows()
+{
+    ReadingListModel model;
+    model.setupReadingListsData(dataPath);
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+
+    // the old default lists take no row any more: the pane starts with the labels
+    QCOMPARE(typesOfRows(model), QStringList({ "label", "label", "label", "-", "list" }));
+    QCOMPARE(model.rowCount(), 5);
+    for (const auto &name : QStringList({ "Favorites", "Reading", "Recent" }))
+        QVERIFY2(!find(model, name).isValid(), qPrintable(name));
+    QCOMPARE(model.data(model.index(0, 0), ReadingListModel::TypeListsRole).toInt(), int(ReadingListModel::Label));
+    // the rows are announced where they are: a label added at the top takes the first row
+    model.addNewLabel("Aardvark", YACReader::YRed);
+    QCOMPARE(model.index(0, 0).data(ReadingListModel::TypeListsRole).toInt(), int(ReadingListModel::Label));
+    QCOMPARE(model.index(0, 0).data().toString(), QString("Aardvark"));
+    QCOMPARE(model.rowCount(), 6);
+}
+
 void ListModelTest::smartListsComeAfterTheLabels()
 {
     {
         ReadingListModel model;
         model.setupReadingListsData(dataPath);
         // without smart lists there is no third separator
-        QCOMPARE(typesOfRows(model), QStringList({ "special", "special", "special", "-", "label", "label", "label", "-", "list" }));
+        QCOMPARE(typesOfRows(model), QStringList({ "label", "label", "label", "-", "list" }));
     }
 
     QVERIFY(exec("INSERT INTO smart_list (id, name, query, ordering) VALUES (1, 'Second', 'read:true', 1), (2, 'First', 'read:false', 0)"));
     ReadingListModel model;
     model.setupReadingListsData(dataPath);
-    QCOMPARE(typesOfRows(model), QStringList({ "special", "special", "special", "-", "label", "label", "label", "-", "smart", "smart", "-", "list" }));
-    QCOMPARE(names(model).mid(8, 2), QStringList({ "First", "Second" }));
+    QCOMPARE(typesOfRows(model), QStringList({ "label", "label", "label", "-", "smart", "smart", "-", "list" }));
+    QCOMPARE(names(model).mid(4, 2), QStringList({ "First", "Second" }));
 
     const auto first = find(model, "First");
     QCOMPARE(model.data(first, ReadingListModel::IDRole).toULongLong(), 2ULL);
@@ -359,7 +378,7 @@ void ListModelTest::smartListsComeAfterTheLabels()
 
     // the sublists of a reading list still find their parent row
     const auto events = find(model, "Events");
-    QCOMPARE(events.row(), 11);
+    QCOMPARE(events.row(), 7);
     const auto sublist = find(model, "First", events);
     QVERIFY(sublist.isValid());
     QCOMPARE(model.parent(sublist), events);
@@ -450,7 +469,7 @@ void ListModelTest::foldersFormATreeInEachSection()
     model.setupReadingListsData(dataPath);
     QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
 
-    QCOMPARE(typesOfRows(model), QStringList({ "special", "special", "special", "-", "label", "label", "label", "-", "smart folder", "smart", "-", "reading folder" }));
+    QCOMPARE(typesOfRows(model), QStringList({ "label", "label", "label", "-", "smart folder", "smart", "-", "reading folder" }));
 
     const auto unread = find(model, "Unread");
     QCOMPARE(model.listFolder(unread), std::optional<ListFolderId>(ListFolderId { ListFolderKind::SmartList, 1 }));
@@ -504,7 +523,7 @@ void ListModelTest::listsAndFoldersAreAddedInsideFolders()
     // a folder of the other section is ignored
     const auto smartFolder = model.addListFolder(ListFolderKind::SmartList, QModelIndex(), "Unread");
     QVERIFY(smartFolder.isValid());
-    QCOMPARE(typesOfRows(model).mid(8, 2), QStringList({ "smart folder", "-" }));
+    QCOMPARE(typesOfRows(model).mid(4, 2), QStringList({ "smart folder", "-" }));
     model.addReadingList("Top", find(model, "Unread"));
     QCOMPARE(value("SELECT folder_id IS NULL FROM reading_list WHERE name = 'Top'"), QString("1"));
 
@@ -513,7 +532,7 @@ void ListModelTest::listsAndFoldersAreAddedInsideFolders()
     QCOMPARE(model.parent(batman), find(model, "Unread"));
     QCOMPARE(model.smartList(batman)->folderId, std::optional<qulonglong>(model.listFolder(find(model, "Unread"))->id));
     model.addSmartList("Rated", "rating>=4");
-    QCOMPARE(names(model).mid(8, 2), QStringList({ "Unread", "Rated" }));
+    QCOMPARE(names(model).mid(4, 2), QStringList({ "Unread", "Rated" }));
 }
 
 void ListModelTest::deletingAFolderRemovesItsRows()
@@ -596,7 +615,7 @@ void ListModelTest::foldersAndListsAreSortedByName()
     QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
 
     // folders first, then lists, each by name, whatever their stored order
-    QCOMPARE(names(model).mid(8), QStringList({ "Rated", "Unread", "Alpha", "Zed", "", "DC", "Marvel", "Events" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "Rated", "Unread", "Alpha", "Zed", "", "DC", "Marvel", "Events" }));
     QCOMPARE(names(model, find(model, "Marvel")), QStringList({ "Avengers", "X-Men", "Civil War", "Secret Wars" }));
     QCOMPARE(names(model, find(model, "Unread")), QStringList({ "Batman", "Later" }));
     // child lists keep their order: it is the reading order of their parent
@@ -735,18 +754,18 @@ void ListModelTest::renamingMovesTheRowToItsName()
     model.addListFolder(ListFolderKind::ReadingList, QModelIndex(), "DC");
     model.addListFolder(ListFolderKind::ReadingList, QModelIndex(), "Marvel");
     model.addReadingList("Zero Hour");
-    QCOMPARE(names(model).mid(8), QStringList({ "DC", "Marvel", "Events", "Zero Hour" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "DC", "Marvel", "Events", "Zero Hour" }));
 
     model.rename(find(model, "DC"), "Vertigo");
-    QCOMPARE(names(model).mid(8), QStringList({ "Marvel", "Vertigo", "Events", "Zero Hour" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "Marvel", "Vertigo", "Events", "Zero Hour" }));
     model.rename(find(model, "Zero Hour"), "Armageddon");
-    QCOMPARE(names(model).mid(8), QStringList({ "Marvel", "Vertigo", "Armageddon", "Events" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "Marvel", "Vertigo", "Armageddon", "Events" }));
     QCOMPARE(names(model, find(model, "Events")), QStringList({ "First" }));
 
     model.addSmartList("Unread", "read:false");
     model.addSmartList("Rated", "rating>=4");
     QVERIFY(model.updateSmartList(find(model, "Rated"), "Zed", "rating>=4"));
-    QCOMPARE(names(model).mid(8, 2), QStringList({ "Unread", "Zed" }));
+    QCOMPARE(names(model).mid(4, 2), QStringList({ "Unread", "Zed" }));
 
     // child lists keep their place
     model.addReadingListAt("Second", find(model, "Events"));
@@ -767,7 +786,7 @@ void ListModelTest::foldersAndListsMoveToFolders()
 
     QVERIFY(model.canMoveToFolder(find(model, "Events"), crisis()));
     QVERIFY(model.moveToFolder(find(model, "Events"), crisis()));
-    QCOMPARE(names(model).mid(8), QStringList({ "DC" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "DC" }));
     QCOMPARE(names(model, crisis()), QStringList({ "Events" }));
     QCOMPARE(value("SELECT folder_id FROM reading_list WHERE id = 1"), value("SELECT id FROM reading_list_folder WHERE name = 'Crisis'"));
     // its child lists go with it
@@ -775,7 +794,7 @@ void ListModelTest::foldersAndListsMoveToFolders()
 
     // a folder goes with what it holds
     QVERIFY(model.moveToFolder(crisis(), QModelIndex()));
-    QCOMPARE(names(model).mid(8), QStringList({ "Crisis", "DC" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "Crisis", "DC" }));
     QCOMPARE(names(model, find(model, "Crisis")), QStringList({ "Events" }));
     QCOMPARE(value("SELECT parent_id IS NULL FROM reading_list_folder WHERE name = 'Crisis'"), QString("1"));
 
@@ -783,11 +802,11 @@ void ListModelTest::foldersAndListsMoveToFolders()
     QVERIFY(unread.isValid());
     model.addSmartList("Batman", "read:false");
     QVERIFY(model.moveToFolder(find(model, "Batman"), find(model, "Unread")));
-    QCOMPARE(typesOfRows(model).mid(8, 2), QStringList({ "smart folder", "-" }));
+    QCOMPARE(typesOfRows(model).mid(4, 2), QStringList({ "smart folder", "-" }));
     QCOMPARE(names(model, find(model, "Unread")), QStringList({ "Batman" }));
     QCOMPARE(value("SELECT folder_id FROM smart_list WHERE name = 'Batman'"), value("SELECT id FROM smart_list_folder WHERE name = 'Unread'"));
     QVERIFY(model.moveToFolder(find(model, "Batman", find(model, "Unread")), QModelIndex()));
-    QCOMPARE(names(model).mid(8, 2), QStringList({ "Unread", "Batman" }));
+    QCOMPARE(names(model).mid(4, 2), QStringList({ "Unread", "Batman" }));
     QVERIFY(model.moveToFolder(find(model, "Batman"), find(model, "Unread")));
 
     // a new model reads the same tree
@@ -851,7 +870,7 @@ void ListModelTest::droppedRowsGoIntoFoldersNextToListsAndToTheTopLevel()
     data = rowData(model, find(model, "Events", find(model, "DC")));
     QVERIFY(model.canDropMimeData(data.get(), Qt::CopyAction, -1, -1, QModelIndex()));
     QVERIFY(model.dropMimeData(data.get(), Qt::CopyAction, -1, -1, QModelIndex()));
-    QCOMPARE(names(model).mid(10), QStringList({ "DC", "Events" }));
+    QCOMPARE(names(model).mid(6), QStringList({ "DC", "Events" }));
     QCOMPARE(value("SELECT folder_id IS NULL FROM reading_list WHERE id = 1"), QString("1"));
 
     // refused: a label, a separator, its own place, the other section
@@ -869,7 +888,7 @@ void ListModelTest::droppedRowsGoIntoFoldersNextToListsAndToTheTopLevel()
     data = rowData(model, find(model, "First", find(model, "Events")));
     QVERIFY(!model.canDropMimeData(data.get(), Qt::CopyAction, -1, -1, find(model, "DC")));
     QVERIFY(!model.canDropMimeData(data.get(), Qt::CopyAction, -1, -1, QModelIndex()));
-    QCOMPARE(names(model).mid(8), QStringList({ "Unread", "", "DC", "Events" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "Unread", "", "DC", "Events" }));
 }
 
 void ListModelTest::childListsAreReorderedByDrops()
@@ -919,14 +938,14 @@ void ListModelTest::rowsDroppedBetweenRowsGoNextToThem()
     model.addListFolder(ListFolderKind::ReadingList, QModelIndex(), "DC");
     QVERIFY(model.moveToFolder(find(model, "Events"), find(model, "DC")));
     // the top level of the section has only a folder
-    QCOMPARE(names(model).mid(8), QStringList({ "DC" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "DC" }));
 
     // above or below the folder row: next to it, at the top level
     auto data = rowData(model, find(model, "Events", find(model, "DC")));
     const auto dcRow = find(model, "DC").row();
     QVERIFY(model.canDropMimeData(data.get(), Qt::CopyAction, dcRow, 0, QModelIndex()));
     QVERIFY(model.dropMimeData(data.get(), Qt::CopyAction, dcRow + 1, 0, QModelIndex()));
-    QCOMPARE(names(model).mid(8), QStringList({ "DC", "Events" }));
+    QCOMPARE(names(model).mid(4), QStringList({ "DC", "Events" }));
     QCOMPARE(value("SELECT folder_id IS NULL FROM reading_list WHERE id = 1"), QString("1"));
 
     // between the rows of a folder: in that folder

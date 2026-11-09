@@ -16,7 +16,6 @@
 ReadingListModel::ReadingListModel(QObject *parent)
     : QAbstractItemModel(parent), rootItem(0)
 {
-    separator1 = new ReadingListSeparatorItem;
     separator2 = new ReadingListSeparatorItem;
     separator3 = new ReadingListSeparatorItem;
 }
@@ -24,7 +23,6 @@ ReadingListModel::ReadingListModel(QObject *parent)
 ReadingListModel::~ReadingListModel()
 {
     cleanAll();
-    delete separator1;
     delete separator2;
     delete separator3;
 }
@@ -156,12 +154,6 @@ QModelIndex ReadingListModel::index(int row, int column, const QModelIndex &pare
         return QModelIndex();
 
     if (!parent.isValid()) {
-        if (rowIsSpecialList(row, parent))
-            return createIndex(row, column, specialLists.at(row));
-
-        if (row == specialLists.count())
-            return createIndex(row, column, separator1);
-
         if (rowIsLabel(row, parent))
             return createIndex(row, column, labels.at(row - labelsStart()));
 
@@ -232,9 +224,6 @@ bool ReadingListModel::canDropMimeData(const QMimeData *data, Qt::DropAction act
     auto item = static_cast<ListItem *>(target.internalPointer());
 
     if (data->formats().contains(YACReader::YACReaderLibrarComiscSelectionMimeDataFormat)) {
-        // Reading and Recent are filled by the library
-        if (typeid(*item) == typeid(SpecialListItem))
-            return static_cast<SpecialListItem *>(item)->getType() == TypeSpecialList::Favorites;
         return typeid(*item) == typeid(LabelItem) || typeid(*item) == typeid(ReadingListItem);
     }
 
@@ -266,20 +255,12 @@ bool ReadingListModel::dropComics(const QMimeData *data, Qt::DropAction action, 
 {
     Q_UNUSED(action);
 
-    QList<qulonglong> comicIds = YACReader::mimeDataToComicsIds(data);
-
-    QLOG_DEBUG() << "dropped : " << comicIds;
+    QLOG_DEBUG() << "dropped : " << YACReader::mimeDataToComicsIds(data);
 
     const auto dest = row == -1 ? parent : index(row, column, parent);
     if (!dest.isValid())
         return false;
     auto item = static_cast<ListItem *>(dest.internalPointer());
-
-    if (typeid(*item) == typeid(SpecialListItem) && static_cast<SpecialListItem *>(item)->getType() == TypeSpecialList::Favorites) {
-        QLOG_DEBUG() << "-------addComicsToFavorites : " << comicIds << " to " << dest.data(IDRole).toULongLong();
-        emit addComicsToFavorites(comicIds);
-        return true;
-    }
 
     if (typeid(*item) == typeid(LabelItem)) {
         emit addComicsToLabel(YACReader::mimeDataToRows(data), dest.data(IDRole).toULongLong());
@@ -336,8 +317,9 @@ void ReadingListModel::setupReadingListsData(QString path)
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(path);
 
-        // setup special lists
-        specialLists = setupSpecialLists(db);
+        // The old default lists (Favorites, Reading, Recent) are not rows any more:
+        // favorites are a comic field and the other two are not part of the book list pane.
+        // Their model classes stay for the library data and the old entry points.
 
         // separator--------------------------------------------
 
@@ -367,10 +349,14 @@ void ReadingListModel::addNewLabel(const QString &name, YACReader::LabelColors c
         QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
         qulonglong id = DBHelper::insertLabel(name, color, db);
 
-        int newPos = addLabelIntoList(new LabelItem(::Label { LabelId(id), name, YACReader::colorToName(color), int(color) }));
-        beginInsertRows(QModelIndex(), specialLists.count() + 1 + newPos + 1, specialLists.count() + 1 + newPos + 1);
-
+        // the row is announced before the label is in the list, so the view is told the
+        // size it already has
+        auto *item = new LabelItem(::Label { LabelId(id), name, YACReader::colorToName(color), int(color) });
+        const int newPos = labelPosition(item);
+        beginInsertRows(QModelIndex(), labelsStart() + newPos, labelsStart() + newPos);
+        labels.insert(newPos, item);
         endInsertRows();
+
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);
@@ -688,10 +674,8 @@ void ReadingListModel::cleanAll()
         delete smartListsRoot;
         delete readingListsRoot;
 
-        qDeleteAll(specialLists);
         qDeleteAll(labels);
 
-        specialLists.clear();
         labels.clear();
 
         items.clear();
@@ -720,27 +704,6 @@ void ReadingListModel::setupReadingListsData(const QList<::ReadingList> &lists, 
 
         items.insert(rli->getId(), rli);
     }
-}
-
-QList<SpecialListItem *> ReadingListModel::setupSpecialLists(QSqlDatabase &db)
-{
-    QList<SpecialListItem *> list;
-
-    QSqlQuery selectQuery("SELECT * FROM default_reading_list ORDER BY id,name", db);
-
-    QSqlRecord record = selectQuery.record();
-
-    int name = record.indexOf("name");
-    int id = record.indexOf("id");
-
-    while (selectQuery.next()) {
-        list << new SpecialListItem(::SpecialList { selectQuery.value(id).toULongLong(), selectQuery.value(name).toString() });
-    }
-
-    list.insert(1, new SpecialListItem(::SpecialList { 0, "Reading" }));
-    list.insert(2, new SpecialListItem(::SpecialList { 2, "Recent" }));
-
-    return list;
 }
 
 void ReadingListModel::setupLabels(QSqlDatabase &db)
@@ -826,36 +789,25 @@ void ReadingListModel::setupReadingLists(QSqlDatabase &db)
     //    node1->appendChild(new ReadingListItem(QList<QVariant>() /*<< 0*/ << "sublist" << "atr",node1));
 }
 
+int ReadingListModel::labelPosition(const LabelItem *item) const
+{
+    int i = 0;
+
+    while (i < labels.count() && labels.at(i)->colorid() < item->colorid())
+        i++;
+
+    // equal colors keep the order by name
+    while (i < labels.count() && labels.at(i)->colorid() == item->colorid() && naturalSortLessThanCI(labels.at(i)->name(), item->name()))
+        i++;
+
+    return i;
+}
+
 int ReadingListModel::addLabelIntoList(LabelItem *item)
 {
-    if (labels.isEmpty())
-        labels << item;
-    else {
-        int i = 0;
-
-        while (i < labels.count() && (labels.at(i)->colorid() < item->colorid()))
-            i++;
-
-        if (i < labels.count()) {
-            if (labels.at(i)->colorid() == item->colorid()) // sort by name
-            {
-                while (i < labels.count() && labels.at(i)->colorid() == item->colorid() && naturalSortLessThanCI(labels.at(i)->name(), item->name()))
-                    i++;
-            }
-        }
-
-        if (i >= labels.count()) {
-            QLOG_DEBUG() << "insertando label al final " << item->name();
-            labels << item;
-        } else {
-            QLOG_DEBUG() << "insertando label en  " << i << "-" << item->name();
-            labels.insert(i, item);
-        }
-
-        return i;
-    }
-
-    return 0;
+    const int i = labelPosition(item);
+    labels.insert(i, item);
+    return i;
 }
 
 void ReadingListModel::reorderingChildren(QList<ReadingListItem *> children)
@@ -877,7 +829,8 @@ void ReadingListModel::reorderingChildren(QList<ReadingListItem *> children)
 
 int ReadingListModel::labelsStart() const
 {
-    return specialLists.count() + 1;
+    // labels are the first section of the pane now that the default lists are gone
+    return 0;
 }
 
 int ReadingListModel::smartListsStart() const
@@ -889,17 +842,6 @@ int ReadingListModel::readingListsStart() const
 {
     const auto smartRows = smartListsRoot->childCount();
     return smartListsStart() + smartRows + (smartRows > 0 ? 1 : 0);
-}
-
-bool ReadingListModel::rowIsSpecialList(int row, const QModelIndex &parent) const
-{
-    if (parent.isValid())
-        return false; // by now no sublists in special list
-
-    if (row >= 0 && row < specialLists.count())
-        return true;
-
-    return false;
 }
 
 bool ReadingListModel::rowIsLabel(int row, const QModelIndex &parent) const

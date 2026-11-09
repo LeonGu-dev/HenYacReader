@@ -79,6 +79,12 @@ void SidebarFilterTest::threePanesDragAndPersistWithReadingLists()
     QCOMPARE(splitter->indexOf(sidebar->readingListsView), 2);
     QVERIFY(sidebar->readingListsView->isVisible());
     QVERIFY(sidebar->readingListsTitle->isVisible());
+    // the old default lists are not offered any more: the pane only lists the user lists
+    for (int row = 0; row < lists.rowCount(); ++row) {
+        const auto type = lists.data(lists.index(row, 0), ReadingListModel::TypeListsRole).toInt();
+        QVERIFY(type != ReadingListModel::SpecialList);
+    }
+    QVERIFY(!lists.indexOf(ReadingListModel::SpecialList, 1).isValid());
     const auto collection = lists.indexOf(ReadingListModel::ReadingList, 1);
     QVERIFY(collection.isValid());
     sidebar->readingListsView->scrollTo(collection);
