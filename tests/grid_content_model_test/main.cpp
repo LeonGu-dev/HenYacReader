@@ -26,6 +26,7 @@ private slots:
     void cleanup();
     void comicRowsForwardTheComicRoles();
     void folderRowsHaveOnlyTheirTitle();
+    void returningToRootShowsComicsAlongsideFolders();
     void roleNames();
     void listCardsReplaceTheOtherRows();
     void removedRowsUpdateTheSourceIndexOfTheNextRows();
@@ -141,6 +142,31 @@ void GridContentModelTest::folderRowsHaveOnlyTheirTitle()
     for (const auto role : { GridContentModel::KindRole, GridContentModel::AvailableRole, GridContentModel::LastKnownNameRole, GridContentModel::ListItemIdRole, GridContentModel::ListIdRole })
         QVERIFY(!folderRow.data(role).isValid());
     QCOMPARE(grid.index(1, 0).data(GridContentModel::KindRole).toString(), QString("Comic"));
+}
+
+void GridContentModelTest::returningToRootShowsComicsAlongsideFolders()
+{
+    QVERIFY(exec("INSERT INTO comic_info (id, hash, title, numPages) VALUES (3, 'root-hash', 'Root comic', 20)"));
+    QVERIFY(exec("INSERT INTO comic (id, parentId, comicInfoId, fileName, path) VALUES (3, 1, 3, 'root.cbz', '/root.cbz')"));
+    FolderModel folders;
+    folders.setupModelData(dataPath);
+    ComicModel comics;
+    GridContentModel grid;
+    grid.setComicModel(&comics);
+
+    // Enter an empty subfolder, as happens after creating a folder.
+    comics.setupFolderModelData(3, dataPath);
+    grid.setFolderModel(&folders, folders.index(qulonglong(3)));
+    QCOMPARE(grid.rowCount(), 0);
+
+    comics.setupFolderModelData(FolderModel::RootFolderId, dataPath);
+    grid.setFolderModel(&folders, QModelIndex());
+    QCOMPARE(comics.rowCount(), 1);
+    QCOMPARE(grid.rowCount(), 2);
+    QVERIFY(grid.isFolderRow(0));
+    QCOMPARE(grid.index(1, 0).data(GridContentModel::ItemKindRole).toInt(), int(GridContentModel::ComicItem));
+    QCOMPARE(grid.index(1, 0).data(GridContentModel::FileNameRole).toString(), QString("root.cbz"));
+    QCOMPARE(grid.sourceComicRow(1), 0);
 }
 
 void GridContentModelTest::roleNames()

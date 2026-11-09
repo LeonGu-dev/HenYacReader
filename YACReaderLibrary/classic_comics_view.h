@@ -26,6 +26,7 @@ public:
 
 protected:
     void applyTheme(const Theme &theme) override;
+    void addItemContextActions(QMenu &menu, const QPoint &point) override;
     void setToolBar(QToolBar *toolBar) override;
     void releaseToolBar() override;
     void saveViewConfig() override;

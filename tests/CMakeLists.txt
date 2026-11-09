@@ -47,4 +47,12 @@ add_subdirectory(folder_placeholder_match_test)
 add_subdirectory(tracked_issues_test)
 add_subdirectory(comic_first_page_test)
 add_subdirectory(library_header_test)
+add_subdirectory(library_navigation_test)
 add_subdirectory(comic_metadata_editor_test)
+
+add_subdirectory(comic_table_test)
+add_subdirectory(sidebar_filter_test)
+add_subdirectory(properties_dialog_test)
+add_test(NAME reference_isolation_test COMMAND ${CMAKE_COMMAND}
+    -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -DBINARY_DIR=${PROJECT_BINARY_DIR}
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/reference_isolation_test.cmake)

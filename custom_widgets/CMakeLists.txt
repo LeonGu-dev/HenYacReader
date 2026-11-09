@@ -5,10 +5,6 @@
 set(WIDGETS_COMMON_SOURCES
     help_about_dialog.h
     help_about_dialog.cpp
-    yacreader_field_edit.h
-    yacreader_field_edit.cpp
-    yacreader_field_plain_text_edit.h
-    yacreader_field_plain_text_edit.cpp
     yacreader_options_dialog.h
     yacreader_options_dialog.cpp
     yacreader_settings_widget.h
@@ -64,6 +60,10 @@ endif()
 
 # --- custom_widgets_library (YACReaderLibrary-specific) ---
 set(LIBRARY_EXTRA_WIDGETS
+    metadata_chip_colors.h
+    metadata_chip_colors.cpp
+    metadata_chip_delegate.h
+    metadata_chip_delegate.cpp
     yacreader_search_line_edit.h
     yacreader_search_line_edit.cpp
     yacreader_titled_toolbar.h
@@ -83,6 +83,8 @@ set(LIBRARY_EXTRA_WIDGETS
 )
 
 add_library(custom_widgets_library STATIC
+    metadata_filter_panel.cpp
+    metadata_filter_panel.h
     ${WIDGETS_COMMON_SOURCES}
     ${LIBRARY_EXTRA_WIDGETS}
 )

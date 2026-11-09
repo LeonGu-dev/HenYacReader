@@ -1,6 +1,7 @@
 #include "classic_comics_view.h"
 
 #include "comic_flow_widget.h"
+#include "comic_table_layout.h"
 #include "shortcuts_manager.h"
 #include "yacreader_global.h"
 #include "yacreader_table_view.h"
@@ -80,6 +81,14 @@ ClassicComicsView::ClassicComicsView(QWidget *parent)
     });
     connect(tableView->horizontalHeader(), &QHeaderView::sectionMoved, this, &ClassicComicsView::saveTableHeadersStatus);
     connect(tableView->horizontalHeader(), &QHeaderView::sectionResized, this, &ClassicComicsView::saveTableHeadersStatus);
+    connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, &ClassicComicsView::saveTableHeadersStatus);
+    connect(tableView->horizontalHeader(), &QHeaderView::sectionClicked, this, [this](int column) {
+        if (!model)
+            return;
+        tableView->closeRatingEditor();
+        ComicTableLayout::sortFromHeaderClick(*tableView->horizontalHeader(), *model, column);
+        saveTableHeadersStatus();
+    });
     connect(comicFlow, &QWidget::customContextMenuRequested, this, &ClassicComicsView::requestedViewContextMenu);
     connect(tableView, &QWidget::customContextMenuRequested, this, &ClassicComicsView::requestedItemContextMenu);
     connect(tableView->horizontalHeader(), &QWidget::customContextMenuRequested, this, &ClassicComicsView::requestedHeaderContextMenu);
@@ -191,8 +200,8 @@ void ClassicComicsView::setModel(ComicModel *model)
         tableView->horizontalHeader()->blockSignals(true);
 
         tableView->setModel(model);
-        connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &ComicsView::comicSelectionChanged);
-        connect(tableView->selectionModel(), &QItemSelectionModel::currentChanged, this, &ComicsView::comicSelectionChanged);
+        connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &ComicsView::comicSelectionChanged, Qt::UniqueConnection);
+        connect(tableView->selectionModel(), &QItemSelectionModel::currentChanged, this, &ComicsView::comicSelectionChanged, Qt::UniqueConnection);
         if (model->rowCount() > 0)
             tableView->setCurrentIndex(model->index(0, 0));
 
@@ -200,51 +209,13 @@ void ClassicComicsView::setModel(ComicModel *model)
         comicFlow->setImagePaths(paths, model->getUnavailableList());
         comicFlow->setMarks(model->getReadList());
 
-        bool loadDefaults = true;
-        if (settings->contains(COMICS_VIEW_HEADERS)) {
-            try {
-                loadDefaults = !tableView->horizontalHeader()->restoreState(settings->value(COMICS_VIEW_HEADERS).toByteArray());
-            } catch (...) {
-            }
-        }
-
-        if (loadDefaults) {
-            // default columns and order
-            for (int i = 0; i < tableView->horizontalHeader()->count(); i++)
-                tableView->horizontalHeader()->hideSection(i);
-
-            tableView->horizontalHeader()->showSection(ComicModel::Number);
-            tableView->horizontalHeader()->showSection(ComicModel::Title);
-            tableView->horizontalHeader()->showSection(ComicModel::FileName);
-            tableView->horizontalHeader()->showSection(ComicModel::NumPages);
-            tableView->horizontalHeader()->showSection(ComicModel::Size);
-            tableView->horizontalHeader()->showSection(ComicModel::ReadColumn);
-            tableView->horizontalHeader()->showSection(ComicModel::CurrentPage);
-            tableView->horizontalHeader()->showSection(ComicModel::PublicationDate);
-            tableView->horizontalHeader()->showSection(ComicModel::Rating);
-
-            tableView->horizontalHeader()->moveSection(ComicModel::CurrentPage, 3);
-            tableView->horizontalHeader()->moveSection(ComicModel::Rating, 12);
-            tableView->horizontalHeader()->moveSection(ComicModel::Size, 5);
-        }
-
-        // make sure that columns without title are hidden
-        for (int i = 0; i < tableView->horizontalHeader()->count(); i++) {
-            auto title = tableView->model()->headerData(i, Qt::Horizontal).toString();
-            if (title.isEmpty() && i != ComicModel::State) {
-                tableView->horizontalHeader()->hideSection(i);
-            }
-        }
-
-        tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);
-        tableView->horizontalHeader()->setSectionsMovable(true);
-        tableView->horizontalHeader()->setStretchLastSection(true);
-
-        for (int i = 0; i < tableView->horizontalHeader()->count() - 1; i++) {
-            if (!tableView->horizontalHeader()->isSectionHidden(i)) {
-                tableView->resizeColumnToContents(i);
-            }
-        }
+        ComicTableLayout::restore(*tableView->horizontalHeader(), *settings);
+        auto *header = tableView->horizontalHeader();
+        header->setDefaultAlignment(Qt::AlignLeft);
+        if (header->isSortIndicatorShown() && ComicModel::isSortableColumn(header->sortIndicatorSection()))
+            model->sort(header->sortIndicatorSection(), header->sortIndicatorOrder());
+        else
+            model->sort(-1);
 
         updateStateColumn();
         connect(model, &QAbstractItemModel::modelReset, this, &ClassicComicsView::updateStateColumn, Qt::UniqueConnection);
@@ -427,26 +398,33 @@ void ClassicComicsView::requestedViewContextMenu(const QPoint &point)
 
 void ClassicComicsView::requestedItemContextMenu(const QPoint &point)
 {
-    emit customContextMenuItemRequested(tableView->mapTo(this, point));
+    emit customContextMenuItemRequested(tableView->viewport()->mapTo(this, point));
 }
 
 void ClassicComicsView::requestedHeaderContextMenu(const QPoint &point)
 {
     QMenu menu;
 
-    for (int i = 0; i < tableView->model()->columnCount(); ++i) {
-        auto title = tableView->model()->headerData(i, Qt::Horizontal).toString();
-
-        if (!title.isEmpty()) {
-            auto action = menu.addAction(tableView->model()->headerData(i, Qt::Horizontal).toString());
-            action->setCheckable(true);
-            action->setChecked(!tableView->isColumnHidden(i));
-            connect(action, &QAction::toggled, tableView, [this, i](bool checked) {
-                tableView->horizontalHeader()->setSectionHidden(i, !checked);
-            });
-            connect(action, &QAction::toggled, this, &ClassicComicsView::saveTableHeadersStatus);
-        }
+    for (const auto column : ComicModel::visibleColumns()) {
+        auto action = menu.addAction(tableView->model()->headerData(column, Qt::Horizontal).toString());
+        action->setCheckable(true);
+        action->setChecked(!tableView->isColumnHidden(column));
+        connect(action, &QAction::toggled, tableView, [this, column](bool checked) {
+            tableView->horizontalHeader()->setSectionHidden(column, !checked);
+            saveTableHeadersStatus();
+        });
     }
+    menu.addSeparator();
+    auto reset = menu.addAction(tr("Restore default columns"));
+    connect(reset, &QAction::triggered, this, [this] {
+        auto *header = tableView->horizontalHeader();
+        header->blockSignals(true);
+        ComicTableLayout::reset(*header);
+        model->sort(-1);
+        updateStateColumn();
+        header->blockSignals(false);
+        saveTableHeadersStatus();
+    });
 
     menu.exec(this->tableView->horizontalHeader()->mapToGlobal(point));
 }
@@ -479,11 +457,7 @@ void ClassicComicsView::saveTableHeadersStatus()
         return;
     }
 
-    if (model->rowCount() == 0) {
-        return;
-    }
-
-    settings->setValue(COMICS_VIEW_HEADERS, tableView->horizontalHeader()->saveState());
+    ComicTableLayout::save(*tableView->horizontalHeader(), *settings);
 }
 
 void ClassicComicsView::saveSplitterStatus()
@@ -496,12 +470,12 @@ void ClassicComicsView::saveSplitterStatus()
 
 void ClassicComicsView::applyModelChanges(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
-    if (roles.contains(ComicModel::ReadColumnRole)) {
+    if (roles.isEmpty() || roles.contains(ComicModel::ReadColumnRole)) {
         comicFlow->setMarks(model->getReadList());
         comicFlow->updateMarks();
     }
 
-    if (roles.contains(ComicModel::CoverPathRole)) {
+    if (roles.isEmpty() || roles.contains(ComicModel::CoverPathRole)) {
         const auto centerIndex = comicFlow->centerIndex();
         for (auto row = topLeft.row(); row <= bottomRight.row(); ++row) {
             comicFlow->remove(row);
@@ -562,4 +536,9 @@ void ClassicComicsView::showSearchingIcon()
 void ClassicComicsView::hideSearchingIcon()
 {
     stack->setCurrentWidget(comicFlow);
+}
+
+void ClassicComicsView::addItemContextActions(QMenu &menu, const QPoint &point)
+{
+    tableView->addChipColorAction(menu, tableView->viewport()->mapFrom(this, point));
 }

@@ -15,8 +15,8 @@ class YACReaderFoldersView;
 class YACReaderLibraryListWidget;
 class YACReaderSearchLineEdit;
 class YACReaderTitledToolBar;
-class YACReaderTitledToolBar;
 class YACReaderReadingListsView;
+class MetadataFilterPanel;
 
 class YACReaderSideBarSeparator : public QWidget
 {
@@ -40,6 +40,7 @@ public:
 
     YACReaderFoldersView *foldersView;
     YACReaderReadingListsView *readingListsView;
+    MetadataFilterPanel *filterPanel;
     YACReaderLibraryListWidget *selectedLibrary;
     YACReaderTitledToolBar *librariesTitle;
     YACReaderTitledToolBar *foldersTitle;
@@ -55,6 +56,7 @@ protected:
     void applyTheme(const Theme &theme) override;
 
     QSettings *settings;
+    YACReaderTitledToolBar *filterTitle;
     QSplitter *splitter;
     QList<YACReaderSideBarSeparator *> separators;
 };

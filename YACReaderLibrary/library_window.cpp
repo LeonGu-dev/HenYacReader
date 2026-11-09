@@ -30,6 +30,7 @@
 #include "library_repair_coordinator.h"
 #include "library_search_coordinator.h"
 #include "library_window_menus.h"
+#include "metadata_filter_panel.h"
 #include "no_libraries_widget.h"
 #include "options_dialog.h"
 #include "organize_files_coordinator.h"
@@ -199,6 +200,7 @@ void LibraryWindow::setupUI()
 
     doDialogs();
     doLayout();
+    sideBar->filterPanel->setModel(comicsModel);
     createToolBars();
 
     librarySearchCoordinator = new LibrarySearchCoordinator(
@@ -452,6 +454,17 @@ void LibraryWindow::doModels()
     // foldersModelProxy->setSourceModel(foldersModel);
     // comics
     comicsModel = new ComicModel(this);
+    connect(comicsModel, &ComicModel::metadataFilterChanged, this, [this] {
+        if (!hasLoadedLibraryModels())
+            return;
+        // The classic cover flow is populated explicitly, unlike the table/grid.
+        contentViewsManager->comicsView->setModel(comicsModel);
+        if (comicsModel->rowCount() > 0)
+            contentViewsManager->showComicsView();
+        else
+            contentViewsManager->showNoSearchResults();
+        enableNeededActions();
+    });
     // lists
     listsModel = new ReadingListModel(this);
     listsModelProxy = new ReadingListModelProxy(this);
@@ -563,7 +576,6 @@ void LibraryWindow::setupCoordinators()
             const auto name = index.data(Qt::DisplayRole).toString();
             addAction(tr("Match to library comics..."), [this, listKind, listId, name] { readingListManagementCoordinator->matchListToLibraryComics(listKind, listId, name); });
             if (type == ReadingListModel::ReadingList) {
-                connect(menu.addAction(tr("Track missing issues...")), &QAction::triggered, comicManagementCoordinator, [this, listId] { comicManagementCoordinator->trackMissingIssuesInReadingList(listId); }, Qt::QueuedConnection);
                 addAction(tr("Export reading list..."), [this, list] { readingListManagementCoordinator->exportReadingList(list); });
                 menu.addSeparator();
                 addAction(tr("New folder..."), [this, list] { readingListManagementCoordinator->addListFolderAt(list); });
@@ -896,6 +908,7 @@ void LibraryWindow::createConnections()
 
     // load library when selected library changes
     connect(selectedLibrary, &YACReaderLibraryListWidget::currentIndexChanged, libraryManagementCoordinator, &LibraryManagementCoordinator::loadLibrary);
+    connect(selectedLibrary, &YACReaderLibraryListWidget::currentLibraryActivated, this, &LibraryWindow::setRootIndex);
 
     // navigations between view modes (tree,list and flow)
     // TODO connect(foldersView, SIGNAL(pressed(QModelIndex)), this, SLOT(updateFoldersViewConextMenu(QModelIndex)));

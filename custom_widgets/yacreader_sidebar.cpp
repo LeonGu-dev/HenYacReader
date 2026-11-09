@@ -1,5 +1,6 @@
 #include "yacreader_sidebar.h"
 
+#include "metadata_filter_panel.h"
 #include "yacreader_folders_view.h"
 #include "yacreader_global.h"
 #include "yacreader_global_gui.h"
@@ -7,17 +8,42 @@
 #include "yacreader_reading_lists_view.h"
 #include "yacreader_titled_toolbar.h"
 
+#include <QCoreApplication>
 #include <QLayout>
+#include <QMouseEvent>
 #include <QPainter>
 
 #include <utility>
+
+namespace {
+class SidebarSectionHeader : public QWidget
+{
+public:
+    explicit SidebarSectionHeader(QSplitterHandle *handle) : QWidget(handle), handle(handle) { }
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override { forward(event); }
+    void mouseMoveEvent(QMouseEvent *event) override { forward(event); }
+    void mouseReleaseEvent(QMouseEvent *event) override { forward(event); }
+
+private:
+    QSplitterHandle *handle;
+    void forward(QMouseEvent *event)
+    {
+        QMouseEvent forwarded(event->type(), handle->mapFromGlobal(event->globalPosition().toPoint()),
+                              event->globalPosition(), event->button(), event->buttons(), event->modifiers(), event->pointingDevice());
+        QCoreApplication::sendEvent(handle, &forwarded);
+        event->setAccepted(forwarded.isAccepted());
+    }
+};
+}
 
 YACReaderSideBar::YACReaderSideBar(QWidget *parent)
     : QWidget(parent)
 {
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
 
-    settings = new QSettings(YACReader::getSettingsPath() + "/YACReaderLibrary.ini", QSettings::IniFormat); // TODO unificar la creación del fichero de config con el servidor
+    settings = new QSettings(YACReader::getSettingsPath() + "/YACReaderLibrary.ini", QSettings::IniFormat, this); // TODO unificar la creación del fichero de config con el servidor
     settings->beginGroup("libraryConfig");
 
     // widgets
@@ -28,7 +54,8 @@ YACReaderSideBar::YACReaderSideBar(QWidget *parent)
     // Titles will be set from theme in applyTheme
     librariesTitle = new YACReaderTitledToolBar("");
     foldersTitle = new YACReaderTitledToolBar("");
-    readingListsTitle = new YACReaderTitledToolBar("");
+    readingListsTitle = new YACReaderTitledToolBar("", this);
+    filterTitle = new YACReaderTitledToolBar("", this);
 
     splitter = new QSplitter(this);
     splitter->setOrientation(Qt::Vertical);
@@ -84,38 +111,65 @@ YACReaderSideBar::YACReaderSideBar(QWidget *parent)
     splitter->addWidget(foldersContainer);
     // END FOLDERS------------------------------------------------------
 
-    // READING LISTS----------------------------------------------------
+    // FILTERS: its header lives in the splitter handle so the whole row is draggable.
+    filterPanel = new MetadataFilterPanel(this);
+    splitter->addWidget(filterPanel);
     splitter->addWidget(readingListsView);
-
-    QVBoxLayout *readingListsHeaderLayout = new QVBoxLayout;
-    readingListsHeaderLayout->setContentsMargins(0, 0, 0, 0);
-    readingListsHeaderLayout->setSpacing(0);
-
-    auto sep4 = new YACReaderSideBarSeparator(this);
-    separators.append(sep4);
-    readingListsHeaderLayout->addWidget(sep4);
-    readingListsHeaderLayout->addSpacing(4);
-
-    readingListsHeaderLayout->addWidget(readingListsTitle);
-
-    readingListsHeaderLayout->addSpacing(4);
-    auto sep5 = new YACReaderSideBarSeparator(this);
-    separators.append(sep5);
-    readingListsHeaderLayout->addWidget(sep5);
-    readingListsHeaderLayout->addSpacing(4);
-
-    readingListsHeaderLayout->addStretch();
-    QSplitterHandle *handle = splitter->handle(1);
-    handle->setLayout(readingListsHeaderLayout);
-    // END READING LISTS------------------------------------------------
+    foldersContainer->setMinimumHeight(96);
+    filterPanel->setMinimumHeight(280);
+    readingListsView->setMinimumHeight(120);
+    splitter->setChildrenCollapsible(false);
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 2);
+    splitter->setStretchFactor(2, 1);
+    splitter->setHandleWidth(39);
+    splitter->setObjectName("folderFilterSplitter");
+    filterTitle->setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto addSectionHeader = [this](int index, YACReaderTitledToolBar *title, QWidget *controls, const QString &objectName) {
+        auto *handle = splitter->handle(index);
+        auto *header = new SidebarSectionHeader(handle);
+        header->setObjectName(objectName);
+        auto *headerLayout = new QVBoxLayout(header);
+        headerLayout->setContentsMargins(0, 0, 0, 0);
+        headerLayout->setSpacing(0);
+        auto *topLine = new YACReaderSideBarSeparator(header);
+        auto *bottomLine = new YACReaderSideBarSeparator(header);
+        topLine->setAttribute(Qt::WA_TransparentForMouseEvents);
+        bottomLine->setAttribute(Qt::WA_TransparentForMouseEvents);
+        separators.append(topLine);
+        separators.append(bottomLine);
+        headerLayout->addWidget(topLine);
+        headerLayout->addSpacing(4);
+        auto *titleRow = new QHBoxLayout;
+        titleRow->setSpacing(0);
+        titleRow->addWidget(title, 1);
+        if (controls)
+            titleRow->addWidget(controls);
+        headerLayout->addLayout(titleRow);
+        headerLayout->addSpacing(4);
+        headerLayout->addWidget(bottomLine);
+        headerLayout->addSpacing(4);
+        auto *handleLayout = new QVBoxLayout(handle);
+        handleLayout->setContentsMargins(0, 0, 0, 0);
+        handleLayout->addWidget(header);
+        handle->setCursor(Qt::SplitVCursor);
+    };
+    addSectionHeader(1, filterTitle, filterPanel->headerControls(), "metadataFilterHeader");
+    filterPanel->headerControls()->show();
+    addSectionHeader(2, readingListsTitle, nullptr, "readingListsHeader");
 
     l->addWidget(splitter);
     l->setSpacing(0);
 
     setLayout(l);
 
-    if (settings->contains(SIDEBAR_SPLITTER_STATUS))
-        splitter->restoreState(settings->value(SIDEBAR_SPLITTER_STATUS).toByteArray());
+    splitter->setSizes({ 180, 420, 180 });
+    if (settings->contains("sidebarFolderFilterReadingListsSplitterV3"))
+        splitter->restoreState(settings->value("sidebarFolderFilterReadingListsSplitterV3").toByteArray());
+    connect(splitter, &QSplitter::splitterMoved, this, [this] {
+        settings->setValue("sidebarFolderFilterReadingListsSplitterV3", splitter->saveState());
+        settings->sync();
+    });
 
     initTheme(this);
 }
@@ -132,7 +186,7 @@ void YACReaderSideBar::closeEvent(QCloseEvent *event)
 {
     QWidget::closeEvent(event);
 
-    settings->setValue(SIDEBAR_SPLITTER_STATUS, splitter->saveState());
+    settings->setValue("sidebarFolderFilterReadingListsSplitterV3", splitter->saveState());
 }
 
 QSize YACReaderSideBar::sizeHint() const
@@ -148,6 +202,7 @@ void YACReaderSideBar::applyTheme(const Theme &theme)
     auto applyCase = [&](const QString &s) { return theme.sidebar.uppercaseLabels ? s.toUpper() : s; };
     librariesTitle->setTitle(applyCase(QObject::tr("Libraries")));
     foldersTitle->setTitle(applyCase(QObject::tr("Folders")));
+    filterTitle->setTitle(applyCase(QCoreApplication::translate("MetadataFilterPanel", "Filter")));
     readingListsTitle->setTitle(applyCase(QObject::tr("Reading Lists")));
 
     for (auto separator : std::as_const(separators)) {

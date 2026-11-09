@@ -15,10 +15,12 @@
 #include <QSet>
 #include <QSqlRecord>
 #include <QStringBuilder>
+#include <QTimer>
 #include <QtDebug>
 #include <QtGui>
 
 #include <algorithm>
+#include <numeric>
 #include <optional>
 #include <utility>
 
@@ -331,6 +333,22 @@ QVariant columnValue(const ComicItem &item, int column)
         return metadata.number;
     case ComicModel::Title:
         return metadata.title;
+    case ComicModel::Favorite:
+        return metadata.favorite.toBool();
+    case ComicModel::Author:
+        return metadata.writer;
+    case ComicModel::Work:
+        return metadata.work;
+    case ComicModel::Characters:
+        return metadata.characters;
+    case ComicModel::Tags:
+        return metadata.tags;
+    case ComicModel::Color:
+        return metadata.color;
+    case ComicModel::Censorship:
+        return metadata.censorship;
+    case ComicModel::Translation:
+        return metadata.translationStatus;
     case ComicModel::PublicationDate:
         return metadata.date;
     case ComicModel::Series:
@@ -380,6 +398,24 @@ ComicModel::ComicModel(QObject *parent)
 
 {
     connect(this, &QAbstractItemModel::modelAboutToBeReset, this, [this] { coverFileExistence.clear(); });
+    connect(this, &QAbstractItemModel::dataChanged, this, [this](const QModelIndex &first, const QModelIndex &last) {
+        filterValuesCache.reset();
+        if (!currentMetadataFilter.active())
+            return;
+        for (int row = first.row(); row <= last.row(); ++row)
+            for (auto &item : filterSource)
+                if (sameRow(item, _data.at(row)))
+                    item = _data.at(row);
+    });
+    connect(this, &QAbstractItemModel::rowsAboutToBeRemoved, this, [this](const QModelIndex &, int first, int last) {
+        filterValuesCache.reset();
+        if (!currentMetadataFilter.active())
+            return;
+        QSet<ComicRowId> removed;
+        for (int row = first; row <= last; ++row)
+            removed.insert(rowIdOf(_data.at(row)));
+        filterSource.removeIf([&](const auto &item) { return removed.contains(rowIdOf(item)); });
+    });
 }
 
 ComicModel::~ComicModel()
@@ -389,9 +425,7 @@ ComicModel::~ComicModel()
 int ComicModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
-    if (_data.isEmpty())
-        return 0;
-    return ComicModel::State + 1;
+    return ComicModel::ColumnCount;
 }
 
 bool ComicModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const
@@ -401,7 +435,7 @@ bool ComicModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, i
     Q_UNUSED(column);
     Q_UNUSED(parent);
 
-    if (!enableResorting)
+    if (!canBeResorted())
         return false;
     return data->formats().contains(YACReader::YACReaderLibrarComiscSelectionMimeDataFormat);
 }
@@ -534,9 +568,9 @@ bool ComicModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int 
     return true;
 }
 
-bool ComicModel::canBeResorted()
+bool ComicModel::canBeResorted() const
 {
-    return enableResorting;
+    return enableResorting && presentationSortColumn < 0 && !currentMetadataFilter.active();
 }
 
 // comic ids for Favorites, file moves, and the drop checks, and the rows in order
@@ -602,6 +636,7 @@ QHash<int, QByteArray> ComicModel::roleNames() const
     roles[LastKnownNameRole] = "last_known_name";
     roles[ListItemIdRole] = "list_item_id";
     roles[ListIdRole] = "list_id";
+    roles[FavoriteRole] = "favorite";
 
     return roles;
 }
@@ -656,6 +691,8 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
         return QString("%1 %2").arg(outputSize, 0, 'f', 2).arg(units[i]);
     };
 
+    if (role == FavoriteRole)
+        return rowMetadata(item).favorite.toBool();
     if (role == NumberRole)
         return value(Number);
     else if (role == TitleRole)
@@ -713,6 +750,20 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
     else if (role == KindRole || role == AvailableRole || role == LastKnownNameRole || role == ListItemIdRole || role == ListIdRole)
         return identityValue(item, role);
 
+    if (role == ChipValuesRole) {
+        if (index.column() == Work)
+            return value(Work).toString().trimmed().isEmpty() ? QStringList() : QStringList { value(Work).toString().trimmed() };
+        if (index.column() == Characters || index.column() == Tags)
+            return value(index.column()).toString().split('\n', Qt::SkipEmptyParts);
+        return QStringList();
+    }
+    if (role == Qt::ToolTipRole) {
+        if (index.column() == Work || index.column() == Characters || index.column() == Tags)
+            return data(index, ChipValuesRole).toStringList().join('\n');
+        if (index.column() == Author)
+            return value(Author).toString();
+        return data(index, Qt::DisplayRole);
+    }
     if (role != Qt::DisplayRole)
         return QVariant();
 
@@ -735,9 +786,27 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
     if (index.column() == ComicModel::Size)
         return sizeString();
     if (index.column() == ComicModel::ReadColumn)
-        return (value(ComicModel::CurrentPage).toInt() == value(ComicModel::NumPages).toInt() || value(ComicModel::ReadColumn).toBool()) ? QVariant(tr("yes")) : QVariant(tr("no"));
-    if (index.column() == ComicModel::CurrentPage)
-        return value(ComicModel::HasBeenOpened).toBool() ? value(index.column()) : QVariant("-");
+        return ((value(NumPages).toInt() > 0 && value(CurrentPage).toInt() >= value(NumPages).toInt()) || value(ReadColumn).toBool()) ? QVariant(tr("yes")) : QVariant(tr("no"));
+    if (index.column() == ComicModel::CurrentPage) {
+        const auto pages = value(NumPages).toInt();
+        return pages > 0 ? QString("%1/%2").arg(qBound(0, value(CurrentPage).toInt(), pages)).arg(pages) : QStringLiteral("\u2014");
+    }
+    if (index.column() == Author)
+        return value(Author).toString().split('\n', Qt::SkipEmptyParts).join(QStringLiteral(" | "));
+    if (index.column() == Characters || index.column() == Tags)
+        return value(index.column()).toString().split('\n', Qt::SkipEmptyParts).join(QStringLiteral(" | "));
+    if (index.column() == Color)
+        return value(Color).isNull() ? tr("Not set") : value(Color).toBool() ? tr("Color")
+                                                                             : tr("Black and white");
+    if (index.column() == Censorship)
+        return value(Censorship).toString() == "uncensored" ? tr("Uncensored") : value(Censorship).toString() == "censored" ? tr("Censored")
+                                                                                                                            : tr("Not set");
+    if (index.column() == Translation) {
+        const auto status = value(Translation).toString();
+        return status == "original" ? tr("Japanese") : status == "translated" ? tr("Chinese translation")
+                : status == "ai"                                              ? tr("AI translation")
+                                                                              : tr("Not set");
+    }
 
     if (index.column() == ComicModel::Rating)
         return QVariant();
@@ -763,30 +832,37 @@ QVariant ComicModel::headerData(int section, Qt::Orientation orientation,
 {
     if (orientation == Qt::Horizontal && role == Qt::DisplayRole) {
         switch (section) {
-        case ComicModel::Number:
-            return QVariant(QString("#"));
+
         case ComicModel::Title:
             return QVariant(QString(tr("Title")));
         case ComicModel::FileName:
             return QVariant(QString(tr("File Name")));
-        case ComicModel::NumPages:
-            return QVariant(QString(tr("Pages")));
+
         case ComicModel::Size:
             return QVariant(QString(tr("Size")));
         case ComicModel::ReadColumn:
             return QVariant(QString(tr("Read")));
         case ComicModel::CurrentPage:
-            return QVariant(QString(tr("Current Page")));
-        case ComicModel::PublicationDate:
-            return QVariant(QString(tr("Publication Date")));
+            return tr("Reading progress");
+        case ComicModel::Author:
+            return tr("Author");
+        case ComicModel::Favorite:
+            return QStringLiteral("\u2665");
+        case ComicModel::Work:
+            return tr("Work / IP");
+        case ComicModel::Characters:
+            return tr("Characters");
+        case ComicModel::Tags:
+            return tr("Tags");
+        case ComicModel::Color:
+            return tr("Color / black and white");
+        case ComicModel::Censorship:
+            return tr("Censorship");
+        case ComicModel::Translation:
+            return tr("Translation");
+
         case ComicModel::Rating:
             return QVariant(QString(tr("Rating")));
-        case ComicModel::Series:
-            return QVariant(QString(tr("Series")));
-        case ComicModel::Volume:
-            return QVariant(QString(tr("Volume")));
-        case ComicModel::StoryArc:
-            return QVariant(QString(tr("Story Arc")));
         }
     }
 
@@ -1027,10 +1103,7 @@ QList<ComicItem> ComicModel::createFavoritesModelData(const QString &databasePat
         selectQuery.setForwardOnly(true);
         selectQuery.prepare("SELECT " + ComicDB::selectList("c", "ci") + " "
                                                                          "FROM comic c INNER JOIN comic_info ci ON (c.comicInfoId = ci.id) "
-                                                                         "INNER JOIN comic_default_reading_list cdrl ON (c.id == cdrl.comic_id) "
-                                                                         "WHERE cdrl.default_reading_list_id = :parentDefaultListId "
-                                                                         "ORDER BY cdrl.ordering");
-        selectQuery.bindValue(":parentDefaultListId", 1);
+                                                                         "WHERE ci.favorite = 1 ORDER BY c.id");
         selectQuery.exec();
         modelData = ComicItems::fromQuery(selectQuery);
         connectionName = db.connectionName();
@@ -1042,7 +1115,7 @@ QList<ComicItem> ComicModel::createFavoritesModelData(const QString &databasePat
 
 void ComicModel::setupFavoritesModelData(const QString &databasePath)
 {
-    enableResorting = true;
+    enableResorting = false;
     mode = Favorites;
     sourceId = -1;
 
@@ -1136,7 +1209,7 @@ void ComicModel::setModelData(QList<ComicItem> *data, const QString &databasePat
 
     beginResetModel();
 
-    _data = *data;
+    takeData(*data);
 
     endResetModel();
 
@@ -1153,12 +1226,73 @@ QString ComicModel::getComicPath(QModelIndex mi)
 
 void ComicModel::takeData(const QList<ComicItem> &data)
 {
-    _data = data;
+    if (!applyingMetadataFilter)
+        filterValuesCache.reset();
+    if (filterLibraryPath != _databasePath) {
+        currentMetadataFilter = { };
+        filterLibraryPath = _databasePath;
+    }
+    filterSource = data;
+    _data.clear();
+    for (const auto &item : data)
+        if (currentMetadataFilter.matches(rowMetadata(item), rowInfo(item) ? rowInfo(item)->rating : 0))
+            _data.append(item);
+    rememberSourceOrder(data);
+    if (presentationSortColumn >= 0)
+        std::stable_sort(_data.begin(), _data.end(), [this](const auto &a, const auto &b) { return tableLessThan(a, b); });
 }
 
 void ComicModel::takeUpdatedData(const QList<ComicItem> &updatedData, std::function<bool(const ComicItem &, const ComicItem &)> comparator)
 {
+    filterValuesCache.reset();
+    if (currentMetadataFilter.active()) {
+        beginResetModel();
+        takeData(updatedData);
+        endResetModel();
+        emit metadataFilterChanged();
+        return;
+    }
     coverFileExistence.clear();
+    rememberSourceOrder(updatedData);
+    if (presentationSortColumn >= 0) {
+        QHash<ComicRowId, const ComicItem *> updated;
+        for (const auto &item : updatedData)
+            updated.insert(rowIdOf(item), &item);
+        // Reconcile by row identity, independent of the source query's order.
+        for (int i = _data.size() - 1; i >= 0;) {
+            if (updated.contains(rowIdOf(_data.at(i)))) {
+                --i;
+                continue;
+            }
+            const int last = i;
+            while (i >= 0 && !updated.contains(rowIdOf(_data.at(i))))
+                --i;
+            beginRemoveRows({ }, i + 1, last);
+            _data.remove(i + 1, last - i);
+            endRemoveRows();
+        }
+        QSet<ComicRowId> present;
+        for (int i = 0; i < _data.size(); ++i) {
+            const auto id = rowIdOf(_data.at(i));
+            present.insert(id);
+            const auto &fresh = *updated.value(id);
+            if (!sameValues(_data.at(i), fresh)) {
+                _data[i] = fresh;
+                emit dataChanged(index(i, 0), index(i, columnCount() - 1), { });
+            }
+        }
+        QList<ComicItem> added;
+        for (const auto &item : updatedData)
+            if (!present.contains(rowIdOf(item)))
+                added.append(item);
+        if (!added.isEmpty()) {
+            beginInsertRows({ }, _data.size(), _data.size() + added.size() - 1);
+            _data.append(added);
+            endInsertRows();
+        }
+        reorderRows([this](const auto &a, const auto &b) { return tableLessThan(a, b); });
+        return;
+    }
     int length = _data.size();
     int lengthUpdated = updatedData.size();
 
@@ -1230,6 +1364,54 @@ void ComicModel::takeUpdatedData(const QList<ComicItem> &updatedData, std::funct
 
         endRemoveRows();
     }
+}
+
+void ComicModel::setMetadataFilter(const MetadataFilter &filter)
+{
+    // Keep the unfiltered source, including an existing search result or list order.
+    if (!currentMetadataFilter.active())
+        filterSource = _data;
+    if (!currentMetadataFilter.active() && presentationSortColumn >= 0)
+        std::stable_sort(filterSource.begin(), filterSource.end(), [this](const auto &a, const auto &b) {
+            return sourceRowOrder.value(rowIdOf(a)) < sourceRowOrder.value(rowIdOf(b));
+        });
+    currentMetadataFilter = filter;
+    const auto source = filterSource;
+    beginResetModel();
+    applyingMetadataFilter = true;
+    takeData(source);
+    applyingMetadataFilter = false;
+    endResetModel();
+    emit metadataFilterChanged();
+}
+
+QMap<int, QStringList> ComicModel::metadataFilterValues() const
+{
+    if (filterValuesCache)
+        return *filterValuesCache;
+    QMap<int, QSet<QString>> unique;
+    if (_databasePath.isEmpty())
+        return { };
+    QString connection;
+    {
+        auto db = DataBaseManagement::loadDatabase(_databasePath);
+        connection = db.connectionName();
+        QSqlQuery query(db);
+        if (query.exec("SELECT DISTINCT tags, work, writer FROM comic_info WHERE id IN (SELECT comicInfoId FROM comic)")) {
+            while (query.next())
+                for (int i = 0; i < 3; ++i)
+                    for (const auto &value : MetadataFilter::values(query.value(i)))
+                        unique[i].insert(value);
+        }
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QMap<int, QStringList> result;
+    for (int i = 0; i < 3; ++i) {
+        result[i] = unique[i].values();
+        result[i].sort(Qt::CaseInsensitive);
+    }
+    filterValuesCache = result;
+    return result;
 }
 
 std::optional<ComicDB> ComicModel::getComic(const QModelIndex &mi)
@@ -1463,6 +1645,8 @@ void ComicModel::updateRowsOf(const QSet<ComicInfoId> &ids, const std::function<
         rows.append(row);
     }
     emitRowRuns(rows, firstColumn, lastColumn, roles);
+    if (presentationSortColumn >= 0)
+        reorderRows([this](const auto &a, const auto &b) { return tableLessThan(a, b); });
 }
 
 void ComicModel::emitRowRuns(const QList<int> &rows, int firstColumn, int lastColumn, const QList<int> &roles)
@@ -1739,6 +1923,10 @@ void ComicModel::addComicsToFavorites(const QList<QModelIndex> &comicsList)
     }
     QSqlDatabase::removeDatabase(connectionName);
 
+    QSet<ComicInfoId> changedInfo;
+    for (const auto &comic : comics)
+        changedInfo.insert(comic.info.id);
+    updateRowsOf(changedInfo, [](ComicInfo &info) { info.favorite = true; }, Favorite, Favorite, { FavoriteRole, Qt::DisplayRole });
     QList<qulonglong> comicIds;
     comicIds.reserve(comics.size());
     for (const auto &comic : std::as_const(comics))
@@ -1802,6 +1990,10 @@ void ComicModel::deleteComicsFromFavorites(const QList<QModelIndex> &comicsList)
     }
     QSqlDatabase::removeDatabase(connectionName);
 
+    QSet<ComicInfoId> changedInfo;
+    for (const auto &comic : comics)
+        changedInfo.insert(comic.info.id);
+    updateRowsOf(changedInfo, [](ComicInfo &info) { info.favorite = false; }, Favorite, Favorite, { FavoriteRole, Qt::DisplayRole });
     QList<qulonglong> comicIds;
     comicIds.reserve(comics.size());
     for (const auto &comic : std::as_const(comics))
@@ -1809,7 +2001,8 @@ void ComicModel::deleteComicsFromFavorites(const QList<QModelIndex> &comicsList)
     emit favoritesChanged(comicIds);
 
     if (mode == Favorites)
-        deleteComicsFromModel(comicsList);
+        reload();
+    emit metadataFilterChanged();
 }
 
 void ComicModel::deleteComicsFromReading(const QList<QModelIndex> &comicsList)
@@ -1963,18 +2156,52 @@ void ComicModel::deleteComicsFromModel(const QList<QModelIndex> &comicsList)
 
 bool ComicModel::isFavorite(const QModelIndex &index)
 {
-    bool isFavorite;
-    QString connectionName = "";
+    return index.isValid() && rowMetadata(_data.at(index.row())).favorite.toBool();
+}
+
+bool ComicModel::setFavorite(const QModelIndex &index, bool favorite)
+{
+    if (!index.isValid() || index.row() >= _data.size())
+        return false;
+    const auto record = _data.at(index.row());
+    DescriptiveMetadataPatch patch;
+    patch.set(&DescriptiveComicMetadata::favorite, favorite);
+    QString connection;
+    bool saved = false;
     {
-        QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
-
-        const auto *comic = rowComic(_data.at(index.row()));
-        isFavorite = comic != nullptr && DBHelper::isFavoriteComic(comic->file.id.value(), db);
-        connectionName = db.connectionName();
+        auto db = DataBaseManagement::loadDatabase(_databasePath);
+        connection = db.connectionName();
+        if (const auto *info = rowInfo(record))
+            saved = DBHelper::updateComicInfoMetadata(info->id, patch, db);
+        else if (const auto *placeholder = rowPlaceholder(record))
+            saved = DBHelper::updatePlaceholderMetadata(placeholder->id, patch, db);
     }
-    QSqlDatabase::removeDatabase(connectionName);
-
-    return isFavorite;
+    QSqlDatabase::removeDatabase(connection);
+    if (!saved)
+        return false;
+    if (const auto *info = rowInfo(record))
+        updateRowsOf({ info->id }, [favorite](ComicInfo &info) { info.favorite = favorite; }, Favorite, Favorite, { FavoriteRole, Qt::DisplayRole });
+    else {
+        for (int row = 0; row < _data.size(); ++row)
+            if (auto *placeholder = rowPlaceholder(_data[row]); placeholder && placeholder->id == rowPlaceholder(record)->id) {
+                placeholder->favorite = favorite;
+                emit dataChanged(this->index(row, Favorite), this->index(row, Favorite));
+            }
+    }
+    QList<qulonglong> fileIds;
+    for (const auto &item : _data)
+        if (const auto *comic = rowComic(item))
+            fileIds.append(comic->file.id.value());
+    emit favoritesChanged(fileIds);
+    if (mode == Favorites || currentMetadataFilter.favoritesOnly)
+        QTimer::singleShot(0, this, [this] {
+            if (mode == Favorites) {
+                reload();
+                emit metadataFilterChanged();
+            } else if (currentMetadataFilter.favoritesOnly)
+                setMetadataFilter(currentMetadataFilter);
+        });
+    return true;
 }
 
 void ComicModel::setShowRecent(bool showRecent)
@@ -2021,6 +2248,12 @@ void ComicModel::updateRating(int rating, QModelIndex mi)
     QSqlDatabase::removeDatabase(connectionName);
 
     updateRowsOf({ id }, [rating](ComicInfo &info) { info.rating = rating; }, 0, columnCount() - 1, { });
+    // Let the star editor finish committing before the row can disappear.
+    if (!currentMetadataFilter.ratings.isEmpty())
+        QTimer::singleShot(0, this, [this] {
+            if (!currentMetadataFilter.ratings.isEmpty())
+                setMetadataFilter(currentMetadataFilter);
+        });
 }
 
 QString ComicModel::localizedDate(const QString &dbDate) const
@@ -2051,4 +2284,116 @@ QString ComicModel::localizedDate(const QString &dbDate) const
     }
 
     return dbDate; // TODO
+}
+
+QList<int> ComicModel::visibleColumns()
+{
+    return { Favorite, Title, FileName, Author, Work, Characters, Tags, Color, Censorship, Translation, CurrentPage, ReadColumn, Rating, Size };
+}
+
+bool ComicModel::isSortableColumn(int column)
+{
+    return visibleColumns().contains(column) && column != Characters && column != Tags;
+}
+
+void ComicModel::rememberSourceOrder(const QList<ComicItem> &items)
+{
+    sourceRowOrder.clear();
+    for (int i = 0; i < items.size(); ++i)
+        sourceRowOrder.insert(rowIdOf(items.at(i)), i);
+}
+
+bool ComicModel::tableLessThan(const ComicItem &a, const ComicItem &b) const
+{
+    const auto &left = rowMetadata(a);
+    const auto &right = rowMetadata(b);
+    const int column = presentationSortColumn;
+    if (column == Author) {
+        const auto anthology = [](const auto &metadata) {
+            return metadata.isAnthology.isNull() ? metadata.writer.toString().split('\n', Qt::SkipEmptyParts).size() > 1 : metadata.isAnthology.toBool();
+        };
+        if (anthology(left) != anthology(right))
+            return !anthology(left);
+    }
+    int comparison = 0;
+    if (column == CurrentPage) {
+        const auto *one = rowInfo(a);
+        const auto *two = rowInfo(b);
+        const bool knownOne = one && one->numPages.toInt() > 0;
+        const bool knownTwo = two && two->numPages.toInt() > 0;
+        if (knownOne != knownTwo)
+            return knownOne;
+        if (knownOne) {
+            const qint64 first = qint64(qBound(0, one->currentPage, one->numPages.toInt())) * two->numPages.toInt();
+            const qint64 second = qint64(qBound(0, two->currentPage, two->numPages.toInt())) * one->numPages.toInt();
+            comparison = first < second ? -1 : first > second ? 1
+                                                              : 0;
+        }
+    } else if (column == Size) {
+        const auto bytes = [](const auto &item) { return columnValue(item, Hash).toString().mid(40).toULongLong(); };
+        comparison = bytes(a) < bytes(b) ? -1 : bytes(a) > bytes(b) ? 1
+                                                                    : 0;
+    } else if (column == Rating || column == ReadColumn || column == Color) {
+        const auto number = [column](const auto &item) {
+            const auto value = columnValue(item, column);
+            if (column == ReadColumn) {
+                const auto info = rowInfo(item);
+                return info && (info->read || (info->numPages.toInt() > 0 && info->currentPage >= info->numPages.toInt())) ? 1 : 0;
+            }
+            return column == Color ? value.isNull() ? 0 : value.toBool() ? 2
+                                                                         : 1
+                                   : value.toInt();
+        };
+        comparison = number(a) < number(b) ? -1 : number(a) > number(b) ? 1
+                                                                        : 0;
+    } else {
+        const auto first = columnValue(a, column).toString();
+        const auto second = columnValue(b, column).toString();
+        comparison = naturalSortLessThanCI(first, second) ? -1 : naturalSortLessThanCI(second, first) ? 1
+                                                                                                      : 0;
+    }
+    if (comparison == 0)
+        return sourceRowOrder.value(rowIdOf(a)) < sourceRowOrder.value(rowIdOf(b));
+    return presentationSortOrder == Qt::AscendingOrder ? comparison < 0 : comparison > 0;
+}
+
+void ComicModel::reorderRows(const std::function<bool(const ComicItem &, const ComicItem &)> &lessThan)
+{
+    QList<int> order(_data.size());
+    std::iota(order.begin(), order.end(), 0);
+    std::stable_sort(order.begin(), order.end(), [this, &lessThan](int a, int b) { return lessThan(_data.at(a), _data.at(b)); });
+    bool changed = false;
+    for (int i = 0; i < order.size(); ++i)
+        changed = changed || order.at(i) != i;
+    if (!changed)
+        return;
+    emit layoutAboutToBeChanged({ }, QAbstractItemModel::VerticalSortHint);
+    const auto previous = persistentIndexList();
+    QList<int> inverse(order.size());
+    QList<ComicItem> sorted;
+    sorted.reserve(_data.size());
+    for (int i = 0; i < order.size(); ++i) {
+        inverse[order.at(i)] = i;
+        sorted.append(_data.at(order.at(i)));
+    }
+    _data.swap(sorted);
+    QModelIndexList next;
+    for (const auto &old : previous)
+        next.append(index(inverse.at(old.row()), old.column()));
+    changePersistentIndexList(previous, next);
+    emit layoutChanged({ }, QAbstractItemModel::VerticalSortHint);
+    emit resortedIndexes(order);
+}
+
+void ComicModel::sort(int column, Qt::SortOrder order)
+{
+    if (column != -1 && !isSortableColumn(column))
+        return;
+    presentationSortColumn = column;
+    presentationSortOrder = order;
+    if (column < 0) {
+        reorderRows([this](const auto &a, const auto &b) { return sourceRowOrder.value(rowIdOf(a)) < sourceRowOrder.value(rowIdOf(b)); });
+    } else {
+        reorderRows([this](const auto &a, const auto &b) { return tableLessThan(a, b); });
+    }
 }

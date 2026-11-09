@@ -87,6 +87,19 @@ private slots:
     void smartListReloads();
     void smartListComicsHaveFolderActions();
     void unreadableOrGoneSmartList();
+    void mangaTableShowsOnlyTheConfirmedColumns();
+    void mangaMetadataColumnsAndProgress();
+    void authorSortingKeepsAnthologiesLast();
+    void progressSortingUsesTheCompletionRatio();
+    void tableSortingPreservesSelectionAndStoredListOrder();
+    void sortedReloadReconcilesRowsByIdentity();
+    void multipleValueColumnsCannotBeSorted();
+    void metadataFiltersCombineAndRestoreRows();
+    void metadataFiltersFollowReloadAndSourceChanges();
+    void metadataFilterVocabularyUsesLibraryValues();
+    void ratingFiltersCombineAndFollowRatingEdits();
+    void publicationTypeIsAnIndependentOptionalFilter();
+    void favoriteFilterOnlyRestrictsWhenEnabled();
 
 private:
     QList<qulonglong> searchComicInfoIds(const QString &text);
@@ -198,7 +211,7 @@ void ComicModelTest::listRowsHaveTheirList()
     QCOMPARE(model.rowCount(), 2);
     QCOMPARE(model.data(model.index(0, 0), ComicModel::IdRole).toULongLong(), 3ULL);
     QCOMPARE(model.data(model.index(1, 0), ComicModel::IdRole).toULongLong(), 1ULL);
-    QCOMPARE(model.columnCount(), int(ComicModel::State) + 1);
+    QCOMPARE(model.columnCount(), int(ComicModel::ColumnCount));
 }
 
 void ComicModelTest::identityRolesFollowTheCase()
@@ -717,7 +730,7 @@ void ComicModelTest::sharedViewsShowComicsWithFiles()
     // comic_info 4 loses its file but stays, because a list refers to it
     QVERIFY(exec("INSERT INTO reading_list_entry (reading_list_id, ordering, comic_info_id) VALUES (1, 2, 4)"));
     QVERIFY(exec("DELETE FROM comic WHERE id = 4"));
-    QVERIFY(exec("INSERT INTO comic_default_reading_list (comic_id, default_reading_list_id, ordering) VALUES (1, 1, 0), (2, 1, 1), (5, 1, 2)"));
+    QVERIFY(exec("UPDATE comic_info SET favorite = 1 WHERE id IN (1, 2)"));
     QVERIFY(exec(QString("UPDATE comic_info SET added = %1").arg(QDateTime::currentSecsSinceEpoch())));
 
     ComicModel model;
@@ -785,7 +798,7 @@ void ComicModelTest::sharedViewAfterAListHasNoDeletedRows()
     QFETCH(QString, source);
 
     QVERIFY(exec("DELETE FROM comic WHERE id = 3"));
-    QVERIFY(exec("INSERT INTO comic_default_reading_list (comic_id, default_reading_list_id, ordering) VALUES (1, 1, 0)"));
+    QVERIFY(exec("UPDATE comic_info SET favorite = 1 WHERE id = 1"));
     QVERIFY(exec(QString("UPDATE comic_info SET added = %1").arg(QDateTime::currentSecsSinceEpoch())));
 
     ComicModel model;
@@ -807,7 +820,7 @@ void ComicModelTest::sharedViewAfterAListHasNoDeletedRows()
     QCOMPARE(model.index(0, 0).data(ComicModel::KindRole).toString(), QString("DeletedComicInList"));
 }
 
-// Favorites keeps comic ids, so a copy of a file is added and removed on its own
+// Favorites belongs to shared metadata, so duplicate files share its state
 void ComicModelTest::favoritesUseTheFileOfTheRow()
 {
     ComicModel model;
@@ -817,12 +830,13 @@ void ComicModelTest::favoritesUseTheFileOfTheRow()
 
     QSignalSpy changed(&model, &ComicModel::favoritesChanged);
     model.addComicsToFavorites(QList<QModelIndex> { copy });
-    QCOMPARE(ints("SELECT comic_id FROM comic_default_reading_list WHERE default_reading_list_id = 1"), QList<int>({ 5 }));
+    QCOMPARE(ints("SELECT id FROM comic_info WHERE favorite = 1"), QList<int>({ 1 }));
+    QVERIFY(model.isFavorite(model.indexOf(ComicRowId(ComicId(1)))));
     QCOMPARE(changed.size(), 1);
     QCOMPARE(changed.first().first().value<QList<qulonglong>>(), QList<qulonglong>({ 5 }));
 
     model.setupFavoritesModelData(dataPath);
-    QCOMPARE(rowIds(model), QList<qulonglong>({ 5 }));
+    QCOMPARE(rowIds(model), QList<qulonglong>({ 1, 5 }));
 
     model.deleteComicsFromFavorites({ model.index(0, 0) });
     QCOMPARE(ints("SELECT COUNT(*) FROM comic_default_reading_list"), QList<int>({ 0 }));
@@ -1510,6 +1524,275 @@ void ComicModelTest::searchOrderIsTheOrderOfTheFirstComparison()
         });
         QCOMPARE(titles(ComicItems::sortedForSearch(items)), titles(expected));
     }
+}
+
+void ComicModelTest::mangaTableShowsOnlyTheConfirmedColumns()
+{
+    ComicModel model;
+    QCOMPARE(model.columnCount(), int(ComicModel::ColumnCount));
+    QCOMPARE(ComicModel::visibleColumns().size(), 14);
+    for (int column = 0; column < model.columnCount(); ++column)
+        QCOMPARE(!model.headerData(column, Qt::Horizontal).toString().isEmpty(), ComicModel::visibleColumns().contains(column));
+    QVERIFY(!ComicModel::visibleColumns().contains(ComicModel::Number));
+    QVERIFY(!ComicModel::visibleColumns().contains(ComicModel::NumPages));
+    QVERIFY(!ComicModel::visibleColumns().contains(ComicModel::PublicationDate));
+    QVERIFY(!ComicModel::visibleColumns().contains(ComicModel::Series));
+}
+
+void ComicModelTest::mangaMetadataColumnsAndProgress()
+{
+    QVERIFY(exec("UPDATE comic_info SET writer='Author A' || char(10) || 'Author B', isAnthology=1, work='Work A', characters='Hero A' || char(10) || 'Hero B', tags='Tag A' || char(10) || 'Tag B', color=NULL, censorship='uncensored', translationStatus='ai' WHERE id=1"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    const auto row = model.getIndexFromId(1).row();
+    QCOMPARE(model.index(row, ComicModel::Author).data().toString(), QString("Author A | Author B"));
+    QCOMPARE(model.index(row, ComicModel::Author).data(Qt::ToolTipRole).toString(), QString("Author A\nAuthor B"));
+    QCOMPARE(model.index(row, ComicModel::Work).data(ComicModel::ChipValuesRole).toStringList(), QStringList({ "Work A" }));
+    QCOMPARE(model.index(row, ComicModel::Characters).data(ComicModel::ChipValuesRole).toStringList(), QStringList({ "Hero A", "Hero B" }));
+    QCOMPARE(model.index(row, ComicModel::Tags).data(Qt::ToolTipRole).toString(), QString("Tag A\nTag B"));
+    QCOMPARE(model.index(row, ComicModel::CurrentPage).data().toString(), QString("3/20"));
+    QCOMPARE(model.index(row, ComicModel::Color).data().toString(), QString("Not set"));
+    QCOMPARE(model.index(row, ComicModel::Censorship).data().toString(), QString("Uncensored"));
+    QCOMPARE(model.index(row, ComicModel::Translation).data().toString(), QString("AI translation"));
+}
+
+void ComicModelTest::authorSortingKeepsAnthologiesLast()
+{
+    QVERIFY(exec("UPDATE comic_info SET writer=CASE id WHEN 1 THEN 'A' WHEN 2 THEN 'Z' WHEN 3 THEN 'B' ELSE 'C' END, isAnthology=(id=3)"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.sort(ComicModel::Author, Qt::AscendingOrder);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 1, 4, 2, 3 }));
+    model.sort(ComicModel::Author, Qt::DescendingOrder);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 2, 4, 1, 1, 3 }));
+    // The old anthology representation without an explicit checkbox is supported too.
+    QVERIFY(exec("UPDATE comic_info SET writer='A' || char(10) || 'B', isAnthology=NULL WHERE id=3"));
+    model.reload();
+    QCOMPARE(comicInfoIds(model).last(), qulonglong(3));
+}
+
+void ComicModelTest::progressSortingUsesTheCompletionRatio()
+{
+    QVERIFY(exec("UPDATE comic_info SET numPages=CASE id WHEN 1 THEN 100 WHEN 2 THEN 200 WHEN 3 THEN 10 ELSE 0 END, currentPage=CASE id WHEN 1 THEN 50 WHEN 2 THEN 60 WHEN 3 THEN 5 ELSE 0 END"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    model.sort(ComicModel::CurrentPage, Qt::AscendingOrder);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 2, 1, 1, 3, 4 }));
+    model.sort(ComicModel::CurrentPage, Qt::DescendingOrder);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 1, 3, 2, 4 }));
+    const auto index = model.getIndexFromId(4).siblingAtColumn(ComicModel::CurrentPage);
+    QCOMPARE(index.data().toString(), QString(QChar(0x2014)));
+}
+
+void ComicModelTest::tableSortingPreservesSelectionAndStoredListOrder()
+{
+    ComicModel model;
+    model.setupReadingListModelData(1, dataPath);
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    const auto selected = QPersistentModelIndex(model.index(0, ComicModel::Title));
+    const auto selectedRow = model.rowId(selected);
+    const auto savedOrder = ints("SELECT comic_info_id FROM reading_list_entry WHERE reading_list_id=1 ORDER BY ordering");
+    const auto source = comicInfoIds(model);
+    model.sort(ComicModel::Title);
+    QVERIFY(selected.isValid());
+    QCOMPARE(model.rowId(selected), selectedRow);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 3 }));
+    QCOMPARE(ints("SELECT comic_info_id FROM reading_list_entry WHERE reading_list_id=1 ORDER BY ordering"), savedOrder);
+    QVERIFY(!model.canBeResorted());
+    model.sort(-1);
+    QCOMPARE(comicInfoIds(model), source);
+    QVERIFY(model.canBeResorted());
+}
+
+void ComicModelTest::sortedReloadReconcilesRowsByIdentity()
+{
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    model.sort(ComicModel::FileName, Qt::DescendingOrder);
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    const auto selected = QPersistentModelIndex(model.getIndexFromId(5));
+    QVERIFY(exec("DELETE FROM comic WHERE id=2"));
+    QVERIFY(exec("UPDATE comic_info SET title='Revised' WHERE id=1"));
+    QVERIFY(exec("INSERT INTO comic (id,parentId,comicInfoId,fileName,path) VALUES(6,2,3,'z.cbz','/Series/z.cbz')"));
+    model.reload();
+    QCOMPARE(rowIds(model), QList<qulonglong>({ 6, 5, 4, 3, 1 }));
+    QVERIFY(selected.isValid());
+    QCOMPARE(model.rowId(selected), ComicRowId(ComicId(5)));
+    QCOMPARE(QModelIndex(selected).siblingAtColumn(ComicModel::Title).data().toString(), QString("Revised"));
+    model.reload();
+    QCOMPARE(rowIds(model), QList<qulonglong>({ 6, 5, 4, 3, 1 }));
+}
+
+void ComicModelTest::multipleValueColumnsCannotBeSorted()
+{
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    model.sort(ComicModel::Title, Qt::DescendingOrder);
+    const auto before = rowIds(model);
+    model.sort(ComicModel::Tags);
+    model.sort(ComicModel::Characters);
+    QCOMPARE(rowIds(model), before);
+    QCOMPARE(model.tableSortColumn(), int(ComicModel::Title));
+}
+
+void ComicModelTest::metadataFiltersCombineAndRestoreRows()
+{
+    QVERIFY(exec("UPDATE comic_info SET tags = 'daily', work = 'Work A', writer = 'Author A', color = 0, censorship = 'uncensored', translationStatus = 'translated' WHERE id = 1"));
+    QVERIFY(exec("UPDATE comic_info SET tags = 'daily' || char(10) || 'adventure', work = 'Work B', writer = 'Author B', color = 1, censorship = 'censored', translationStatus = 'ai' WHERE id = 2"));
+    QVERIFY(exec("UPDATE comic_info SET tags = 'daily-extra', work = 'Work A', writer = 'Author C' WHERE id = 3"));
+    ComicModel model;
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.setupFolderModelData(2, dataPath);
+    const auto original = rowIds(model);
+    MetadataFilter filter;
+    filter.tags = { "daily" };
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 3); // both files of comic_info 1 and comic_info 2
+    filter.tags.insert("adventure");
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 2 }));
+    filter.authors.insert("Author A");
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    filter.matchAll = false;
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 3);
+    filter.color = "bw";
+    filter.censorship = "uncensored";
+    filter.translation = "translated";
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 1 }));
+    filter.translation = "ai";
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    model.setMetadataFilter({ });
+    QCOMPARE(rowIds(model), original);
+    model.sort(ComicModel::Title, Qt::DescendingOrder);
+    model.setMetadataFilter(filter);
+    model.setMetadataFilter({ });
+    model.sort(-1);
+    QCOMPARE(rowIds(model), original);
+}
+
+void ComicModelTest::metadataFiltersFollowReloadAndSourceChanges()
+{
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    MetadataFilter filter;
+    filter.tags = { "fresh" };
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    QVERIFY(exec("UPDATE comic_info SET tags = 'fresh' WHERE id = 3"));
+    model.reload();
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 3 }));
+    model.setupReadingListModelData(1, dataPath);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 3 }));
+    QVERIFY(!model.canBeResorted());
+    model.deleteComicsFromLists({ model.index(0, 0) });
+    model.setMetadataFilter({ });
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1 }));
+    model.setupFolderModelData(2, dataPath);
+    QCOMPARE(model.rowCount(), 5);
+}
+
+void ComicModelTest::metadataFilterVocabularyUsesLibraryValues()
+{
+    QVERIFY(exec("UPDATE comic_info SET tags = ' daily ' || char(10) || 'adventure' || char(10) || 'daily', work = 'Work A', writer = 'A' || char(10) || 'B' WHERE id = 1"));
+    QVERIFY(exec("UPDATE comic_info SET tags = 'daily' WHERE id = 2"));
+    ComicModel model;
+    model.setupReadingListModelData(1, dataPath);
+    QCOMPARE(model.metadataFilterValues().value(0), QStringList({ "adventure", "daily" }));
+    QCOMPARE(model.metadataFilterValues().value(1), QStringList({ "Work A" }));
+    QCOMPARE(model.metadataFilterValues().value(2), QStringList({ "A", "B" }));
+    MetadataFilter filter;
+    filter.tags = { "nonexistent" };
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    QCOMPARE(model.metadataFilterValues().value(0), QStringList({ "adventure", "daily" }));
+}
+
+void ComicModelTest::ratingFiltersCombineAndFollowRatingEdits()
+{
+    QVERIFY(exec("UPDATE comic_info SET tags = 'daily' WHERE id = 4"));
+    ComicModel model;
+    QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    model.setupFolderModelData(2, dataPath);
+    MetadataFilter filter;
+    filter.ratings = { 4, 5 };
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 4 }));
+    filter.ratings.insert(3);
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 3, 4 }));
+    filter.tags = { "daily" };
+    filter.matchAll = false;
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 4 }));
+    model.updateRating(2, model.index(0, 0));
+    QTRY_COMPARE(model.rowCount(), 0);
+    filter.ratings.clear();
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 4 }));
+    QCOMPARE(model.index(0, 0).data(ComicModel::RatingRole).toInt(), 2);
+    model.setMetadataFilter({ });
+    QCOMPARE(model.rowCount(), 5);
+}
+
+void ComicModelTest::publicationTypeIsAnIndependentOptionalFilter()
+{
+    QVERIFY(exec("UPDATE comic_info SET publicationType='doujinshi' WHERE id=1"));
+    QVERIFY(exec("UPDATE comic_info SET publicationType='tankobon' WHERE id=2"));
+    QVERIFY(exec("UPDATE comic_info SET publicationType='magazine', tags='daily' WHERE id=3"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    MetadataFilter filter;
+    filter.publicationType = "doujinshi";
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 1 }));
+    filter.publicationType = "tankobon";
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 2 }));
+    filter.publicationType = "magazine";
+    filter.tags = { "daily", "other" };
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    filter.matchAll = false;
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 3 }));
+    filter.ratings = { 1, 2 };
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    model.setMetadataFilter({ });
+    QCOMPARE(model.rowCount(), 5);
+}
+
+void ComicModelTest::favoriteFilterOnlyRestrictsWhenEnabled()
+{
+    QVERIFY(exec("UPDATE comic_info SET favorite=1 WHERE id=1"));
+    QVERIFY(exec("UPDATE comic_info SET tags='daily' WHERE id IN (1,2)"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    MetadataFilter filter;
+    filter.favoritesOnly = true;
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 1 }));
+    filter.tags = { "daily", "other" };
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 0);
+    filter.matchAll = false;
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 1, 1 }));
+    filter.tags.clear();
+    filter.favoritesOnly = false;
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 5); // grey heart means no favorite restriction
+    filter.favoritesOnly = true;
+    model.setMetadataFilter(filter);
+    QVERIFY(model.setFavorite(model.index(0, 0), false));
+    QTRY_COMPARE(model.rowCount(), 0);
+    model.setMetadataFilter({ });
+    QCOMPARE(model.rowCount(), 5);
 }
 
 QTEST_MAIN(ComicModelTest)

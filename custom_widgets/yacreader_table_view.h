@@ -7,12 +7,14 @@
 #include <QTableView>
 
 class QResizeEvent;
+class QMenu;
 
 class YACReaderTableView : public QTableView, protected Themable
 {
     Q_OBJECT
 public:
     explicit YACReaderTableView(QWidget *parent = 0);
+    bool addChipColorAction(QMenu &menu, const QPoint &viewportPosition);
     QColor starRatingColor() const { return theme.comicsViewTable.starRatingColor; }
     QColor starRatingSelectedColor() const { return theme.comicsViewTable.starRatingSelectedColor; }
     QIcon deletedComicIcon() const { return theme.comicsViewTable.deletedComicIcon; }
@@ -20,6 +22,7 @@ public:
 
 protected:
     void applyTheme(const Theme &theme) override;
+    virtual QColor requestChipColor(const QColor &initial);
 
 signals:
     void comicRated(int, QModelIndex);
@@ -35,6 +38,7 @@ private:
     void resizeEvent(QResizeEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
     void leaveEvent(QEvent *event) override;
     void performDrag();
     void dragEnterEvent(QDragEnterEvent *event) override;

@@ -185,6 +185,8 @@ qt_add_executable(YACReaderLibrary WIN32
     comics_view_transition.cpp
     classic_comics_view.h
     classic_comics_view.cpp
+    comic_table_layout.h
+    comic_table_layout.cpp
     grid_comics_view.h
     grid_comics_view.cpp
     grid_content_model.h

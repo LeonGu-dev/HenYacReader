@@ -10,6 +10,7 @@
 
 class YACReaderTableView;
 class QSplitter;
+class QMenu;
 class ComicFlowWidget;
 class QToolBar;
 class ComicModel;
@@ -38,6 +39,7 @@ public:
     virtual void updateCurrentComicView() = 0;
     virtual void focusComicsNavigation(Qt::FocusReason reason) = 0;
     virtual void reloadContent();
+    virtual void addItemContextActions(QMenu &, const QPoint &) { }
     virtual ContentViewState captureViewState() const { return { }; }
     virtual void restoreViewState(const ContentViewState &state) { Q_UNUSED(state); }
 

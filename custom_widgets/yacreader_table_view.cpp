@@ -3,15 +3,37 @@
 #include "QsLog.h"
 #include "comic_model.h"
 #include "cover_utils.h"
+#include "favorite_heart.h"
+#include "metadata_chip_colors.h"
+#include "metadata_chip_delegate.h"
 #include "yacreader_global_gui.h"
 
 #include <QApplication>
 #include <QBuffer>
+#include <QColorDialog>
 #include <QDrag>
 #include <QHeaderView>
+#include <QMenu>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QPainter>
 #include <QResizeEvent>
+
+namespace {
+class FavoriteDelegate : public QStyledItemDelegate
+{
+public:
+    explicit FavoriteDelegate(QObject *parent) : QStyledItemDelegate(parent) { }
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        auto item = option;
+        initStyleOption(&item, index);
+        item.text.clear();
+        (item.widget ? item.widget->style() : QApplication::style())->drawControl(QStyle::CE_ItemViewItem, &item, painter, item.widget);
+        paintFavoriteHeart(*painter, option.rect, index.data(ComicModel::FavoriteRole).toBool());
+    }
+};
+}
 
 YACReaderTableView::YACReaderTableView(QWidget *parent)
     : QTableView(parent), editing(false), myeditor(0)
@@ -28,7 +50,7 @@ YACReaderTableView::YACReaderTableView(QWidget *parent)
     horizontalHeader()->setStretchLastSection(true);
     horizontalHeader()->setSectionsClickable(false);
     // comicView->verticalHeader()->setResizeMode(QHeaderView::ResizeToContents);
-    verticalHeader()->setDefaultSectionSize(24);
+    verticalHeader()->setDefaultSectionSize(qMax(32, fontMetrics().height() + 14));
     verticalHeader()->setSectionsClickable(false); // TODO comportamiento anómalo
 
     setCornerButtonEnabled(false);
@@ -37,7 +59,12 @@ YACReaderTableView::YACReaderTableView(QWidget *parent)
     setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     setItemDelegateForColumn(ComicModel::Rating, new YACReaderRatingDelegate(this));
+    setItemDelegateForColumn(ComicModel::Favorite, new FavoriteDelegate(this));
     setItemDelegateForColumn(ComicModel::State, new YACReaderComicStateDelegate(this));
+    for (const auto column : { ComicModel::Work, ComicModel::Characters, ComicModel::Tags })
+        setItemDelegateForColumn(column, new MetadataChipDelegate(this));
+    setTextElideMode(Qt::ElideRight);
+    setWordWrap(false);
     setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     setMouseTracking(true);
@@ -60,6 +87,7 @@ void YACReaderTableView::mouseMoveEvent(QMouseEvent *event)
 {
 
     QModelIndex mi = indexAt(event->pos());
+    viewport()->setCursor(mi.isValid() && (mi.column() == ComicModel::Favorite || !mi.data(ComicModel::ChipValuesRole).toStringList().isEmpty()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
     if (mi.isValid()) {
         QList<QModelIndex> selectedIndexes = this->selectedIndexes();
         if (selectedIndexes.contains(mi)) {
@@ -91,6 +119,12 @@ void YACReaderTableView::mousePressEvent(QMouseEvent *event)
 {
     QTableView::mousePressEvent(event);
     QModelIndex mi = indexAt(event->pos());
+    if (event->button() == Qt::LeftButton && mi.isValid() && mi.column() == ComicModel::Favorite) {
+        closeRatingEditor();
+        if (auto *comics = qobject_cast<ComicModel *>(model()))
+            comics->setFavorite(mi, !mi.data(ComicModel::FavoriteRole).toBool());
+        return;
+    }
     if (mi.isValid()) {
         QList<QModelIndex> selectedIndexes = this->selectedIndexes();
         if (selectedIndexes.contains(mi)) {
@@ -114,7 +148,17 @@ void YACReaderTableView::mousePressEvent(QMouseEvent *event)
 void YACReaderTableView::leaveEvent(QEvent *event)
 {
     closeRatingEditor();
+    viewport()->unsetCursor();
     event->accept();
+}
+
+void YACReaderTableView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if (indexAt(event->pos()).column() == ComicModel::Favorite) {
+        event->accept();
+        return;
+    }
+    QTableView::mouseDoubleClickEvent(event);
 }
 
 void YACReaderTableView::performDrag()
@@ -494,4 +538,37 @@ int StarEditor::starAtPosition(int x)
         return -1;
 
     return star;
+}
+
+bool YACReaderTableView::addChipColorAction(QMenu &menu, const QPoint &viewportPosition)
+{
+    const auto index = indexAt(viewportPosition);
+    if (!index.isValid())
+        return false;
+    const auto delegate = qobject_cast<MetadataChipDelegate *>(itemDelegateForColumn(index.column()));
+    if (!delegate)
+        return false;
+    QStyleOptionViewItem option;
+    initViewItemOption(&option);
+    option.rect = visualRect(index);
+    const auto value = delegate->valueAt(option, index, viewportPosition);
+    if (value.isEmpty())
+        return false;
+    auto action = new QAction(tr("Change color"), &menu);
+    action->setObjectName("changeChipColor");
+    const auto before = menu.actions().isEmpty() ? nullptr : menu.actions().first();
+    menu.insertAction(before, action);
+    menu.insertSeparator(before);
+    // Close the popup before entering the native modal color picker.
+    connect(action, &QAction::triggered, this, [this, column = index.column(), value] {
+        const auto selected = requestChipColor(MetadataChipDelegate::colorForValue(column, value));
+        if (!selected.isValid()) return;
+        if (!MetadataChipColors::instance().setColor(column, value, selected))
+            QMessageBox::warning(this, tr("Change color"), tr("The color could not be saved.")); }, Qt::QueuedConnection);
+    return true;
+}
+QColor YACReaderTableView::requestChipColor(const QColor &initial)
+{
+    // Default options deliberately retain the native Windows color dialog.
+    return QColorDialog::getColor(initial, this, tr("Change color"));
 }

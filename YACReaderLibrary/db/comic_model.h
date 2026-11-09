@@ -3,10 +3,12 @@
 
 #include "comic_item.h"
 #include "comic_record.h"
+#include "metadata_filter.h"
 #include "yacreader_global.h"
 
 #include <QAbstractItemModel>
 #include <QHash>
+#include <QMap>
 #include <QModelIndex>
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -47,6 +49,15 @@ public:
     enum CalculatedColumns {
         Size = Columns::StoryArc + 1,
         State,
+        Author,
+        Work,
+        Characters,
+        Tags,
+        Color,
+        Censorship,
+        Translation,
+        Favorite,
+        ColumnCount,
     };
 
     enum Roles {
@@ -78,6 +89,8 @@ public:
         LastKnownNameRole,
         ListItemIdRole,
         ListIdRole,
+        ChipValuesRole,
+        FavoriteRole,
     };
 
     enum Mode {
@@ -106,7 +119,12 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const override;
     bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override;
-    bool canBeResorted();
+    bool canBeResorted() const;
+    static QList<int> visibleColumns();
+    static bool isSortableColumn(int column);
+    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
+    int tableSortColumn() const { return presentationSortColumn; }
+    Qt::SortOrder tableSortOrder() const { return presentationSortOrder; }
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
     QStringList mimeTypes() const override;
 
@@ -153,6 +171,9 @@ public:
     void removeInTransaction(int row);
     void reloadContinueReading();
     void reload();
+    void setMetadataFilter(const MetadataFilter &filter);
+    MetadataFilter metadataFilter() const { return currentMetadataFilter; }
+    QMap<int, QStringList> metadataFilterValues() const;
     void reload(const ComicDB &comic);
     void resetComicRating(const QModelIndex &mi);
     void notifyCoverChange(const QList<ComicInfoId> &ids);
@@ -175,6 +196,7 @@ public:
     void deleteComicsFromModel(const QList<QModelIndex> &comicsList);
 
     bool isFavorite(const QModelIndex &index);
+    bool setFavorite(const QModelIndex &index, bool favorite);
 
     ComicModel::Mode getMode() { return mode; }
     unsigned long long int getSourceId() { return sourceId; }
@@ -198,6 +220,11 @@ public slots:
 
 protected:
 private:
+    MetadataFilter currentMetadataFilter;
+    QList<ComicItem> filterSource;
+    QString filterLibraryPath;
+    bool applyingMetadataFilter = false;
+    mutable std::optional<QMap<int, QStringList>> filterValuesCache;
     QHash<quint64, quint64> coverRevisions; // by comic_info id
     // the cover of a row without a file may be gone; checked once per path, cleared when the rows or a cover change
     bool coverFileExists(const QString &path) const;
@@ -217,6 +244,12 @@ private:
     // one dataChanged for each run of consecutive rows; `rows` is ascending
     void emitRowRuns(const QList<int> &rows, int firstColumn, int lastColumn, const QList<int> &roles);
     QList<ComicItem> _data;
+    int presentationSortColumn = -1;
+    Qt::SortOrder presentationSortOrder = Qt::AscendingOrder;
+    QHash<ComicRowId, int> sourceRowOrder;
+    void rememberSourceOrder(const QList<ComicItem> &data);
+    bool tableLessThan(const ComicItem &a, const ComicItem &b) const;
+    void reorderRows(const std::function<bool(const ComicItem &, const ComicItem &)> &lessThan);
 
     QString _databasePath;
     QString _databaseConnection;
@@ -230,6 +263,7 @@ private:
     qlonglong recentDays;
 
 signals:
+    void metadataFilterChanged();
     void isEmpty();
     void favoritesChanged(const QList<qulonglong> &comicIds);
     void resortedIndexes(QList<int>);
