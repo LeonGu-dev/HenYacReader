@@ -5,10 +5,10 @@
 
 #include <algorithm>
 
-const std::array<DescriptiveComicMetadata::Column, 7> &DescriptiveComicMetadata::personalColumns()
+const std::array<DescriptiveComicMetadata::Column, 9> &DescriptiveComicMetadata::personalColumns()
 {
     using M = DescriptiveComicMetadata;
-    static const std::array<Column, 7> columns = { {
+    static const std::array<Column, 9> columns = { {
             { "translatedTitle", "TEXT", &M::translatedTitle },
             { "circle", "TEXT", &M::circle },
             { "work", "TEXT", &M::work },
@@ -16,15 +16,17 @@ const std::array<DescriptiveComicMetadata::Column, 7> &DescriptiveComicMetadata:
             { "censorship", "TEXT", &M::censorship },
             { "translationStatus", "TEXT", &M::translationStatus },
             { "translator", "TEXT", &M::translator },
+            { "favorite", "BOOLEAN", &M::favorite },
+            { "publicationType", "TEXT", &M::publicationType },
     } };
     return columns;
 }
 
-const std::array<DescriptiveComicMetadata::Column, 44> &DescriptiveComicMetadata::columns()
+const std::array<DescriptiveComicMetadata::Column, 46> &DescriptiveComicMetadata::columns()
 {
     using M = DescriptiveComicMetadata;
-    static const std::array<Column, 44> columns = [] {
-        std::array<Column, 44> result = { {
+    static const std::array<Column, 46> columns = [] {
+        std::array<Column, 46> result = { {
                 { "title", "TEXT", &M::title },
                 { "number", "TEXT", &M::number },
                 { "isBis", "BOOLEAN", &M::isBis },

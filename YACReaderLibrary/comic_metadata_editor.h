@@ -12,6 +12,7 @@ class QButtonGroup;
 class QLineEdit;
 class QLabel;
 class QVBoxLayout;
+class FavoriteHeartButton;
 
 class MetadataListEdit : public QWidget
 {
@@ -57,6 +58,7 @@ private:
     QMap<QString, ChoiceField> choices;
     QLineEdit *singleAuthor;
     QCheckBox *anthology;
+    FavoriteHeartButton *favorite;
     MetadataListEdit *authors;
     MetadataListEdit *characters;
     MetadataListEdit *tags;

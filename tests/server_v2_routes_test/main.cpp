@@ -104,7 +104,7 @@ void ServerV2RoutesTest::createLibrary()
                  "(4, 2, 4, 'c4.cbz', '/Series/c4.cbz'), (5, 3, 5, 'c5.cbz', '/Series/Arc/c5.cbz')"));
     // a second file of comic_info 1, and comic_info 4 loses its file but stays in the lists
     QVERIFY(exec("INSERT INTO comic (id, parentId, comicInfoId, fileName, path) VALUES (6, 3, 1, 'copy.cbz', '/Series/Arc/copy.cbz')"));
-    QVERIFY(exec("INSERT INTO comic_default_reading_list (comic_id, default_reading_list_id, ordering) VALUES (4, 1, 0), (2, 1, 1), (1, 1, 2)"));
+    QVERIFY(exec("UPDATE comic_info SET favorite = 1 WHERE id IN (4, 2, 1)"));
     QVERIFY(exec("DELETE FROM comic WHERE id = 4"));
 
     QVERIFY(exec("INSERT INTO placeholder (id, series, volume, number, title, coverKey) VALUES "

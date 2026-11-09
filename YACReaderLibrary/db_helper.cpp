@@ -539,7 +539,6 @@ QList<ComicDB> DBHelper::getFavorites(qulonglong libraryId)
     QString libraryPath = DBHelper::getLibraries().getPath(libraryId);
     QList<ComicDB> list;
 
-    const int FAV_ID = 1;
     QString connectionName = "";
 
     {
@@ -547,10 +546,7 @@ QList<ComicDB> DBHelper::getFavorites(qulonglong libraryId)
         QSqlQuery selectQuery(db);
         selectQuery.prepare("SELECT " + ComicDB::selectList("c", "ci") + " "
                                                                          "FROM comic c INNER JOIN comic_info ci ON (c.comicInfoId = ci.id) "
-                                                                         "INNER JOIN comic_default_reading_list cdrl ON (c.id == cdrl.comic_id) "
-                                                                         "WHERE cdrl.default_reading_list_id = :parentDefaultListId "
-                                                                         "ORDER BY cdrl.ordering");
-        selectQuery.bindValue(":parentDefaultListId", FAV_ID);
+                                                                         "WHERE ci.favorite = 1 ORDER BY c.id");
         selectQuery.exec();
 
         list = comicsFromQuery(selectQuery);
@@ -993,16 +989,12 @@ std::optional<QStringList> DBHelper::removePlaceholdersFromFolder(const QList<Pl
 void DBHelper::deleteComicsFromFavorites(const QList<ComicDB> &comicsList, QSqlDatabase &db)
 {
     db.transaction();
-
-    QLOG_DEBUG() << "deleteComicsFromFavorites----------------------------------";
-
     QSqlQuery query(db);
-    query.prepare("DELETE FROM comic_default_reading_list WHERE comic_id = :comic_id AND default_reading_list_id = 1");
+    query.prepare("UPDATE comic_info SET favorite = 0 WHERE id = :id");
     for (const auto &comic : comicsList) {
-        query.bindValue(":comic_id", comic.file.id.value());
+        query.bindValue(":id", comic.info.id.value());
         query.exec();
     }
-
     db.commit();
 }
 
@@ -2187,25 +2179,13 @@ qulonglong DBHelper::insertReadingSubList(const QString &name, qulonglong parent
 
 void DBHelper::insertComicsInFavorites(const QList<ComicDB> &comicsList, QSqlDatabase &db)
 {
-    QSqlQuery getNumComicsInFavoritesQuery("SELECT count(*) FROM comic_default_reading_list WHERE default_reading_list_id = 1;", db);
-    getNumComicsInFavoritesQuery.next();
-
-    int numComics = getNumComicsInFavoritesQuery.value(0).toInt();
-
     db.transaction();
-
     QSqlQuery query(db);
-    query.prepare("INSERT INTO comic_default_reading_list (default_reading_list_id, comic_id, ordering) "
-                  "VALUES (1, :comic_id, :ordering)");
-
+    query.prepare("UPDATE comic_info SET favorite = 1 WHERE id = :id");
     for (const auto &comic : comicsList) {
-        query.bindValue(":comic_id", comic.file.id.value());
-        query.bindValue(":ordering", numComics++);
+        query.bindValue(":id", comic.info.id.value());
         query.exec();
     }
-
-    QLOG_TRACE() << query.lastError();
-
     db.commit();
 }
 
@@ -2825,7 +2805,7 @@ std::optional<ComicRecord> DBHelper::loadRecord(const ComicRecord &record, QSqlD
 bool DBHelper::isFavoriteComic(qulonglong id, QSqlDatabase &db)
 {
     QSqlQuery selectQuery(db);
-    selectQuery.prepare("SELECT * FROM comic_default_reading_list cl WHERE cl.comic_id = :comic_id AND cl.default_reading_list_id = 1");
+    selectQuery.prepare("SELECT c.id FROM comic c INNER JOIN comic_info ci ON ci.id = c.comicInfoId WHERE c.id = :comic_id AND ci.favorite = 1");
     selectQuery.bindValue(":comic_id", id);
     selectQuery.exec();
 

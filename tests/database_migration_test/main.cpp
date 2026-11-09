@@ -22,6 +22,8 @@ private slots:
     void upgradesHistoricalSchemas();
     void failedFinalSchemaStepRollsBack();
     void upgradesPersonalMetadataWithoutChangingExistingRecords();
+    void migratesLegacyFavoritesIntoSharedMetadata();
+    void addsPublicationTypeWithoutChangingFavorites();
 
 private:
     static bool createOldLibrary(const QString &libraryPath, const QString &version, const QStringList &extraStatements = { });
@@ -111,6 +113,8 @@ bool DatabaseMigrationTest::createHistoricalLibrary(const QString &libraryPath, 
             { "9.13.0", { "added", "type", "editor", "imprint", "teams", "locations", "series", "alternateSeries", "alternateNumber", "alternateCount", "languageISO", "seriesGroup", "mainCharacterOrTeam", "review", "tags" } },
             { "9.16.0", { "imageFiltersJson", "lastTimeImageFiltersSet", "lastTimeCoverSet", "usesExternalCover", "lastTimeMetadataSet" } },
             { "10.5.1", { "translatedTitle", "circle", "work", "isAnthology", "censorship", "translationStatus", "translator" } },
+            { "10.5.2", { "favorite" } },
+            { "10.5.3", { "publicationType" } },
         };
         for (const auto &[introduced, columns] : comicColumns) {
             if (DataBaseManagement::compareVersions(version, introduced) < 0) {
@@ -358,6 +362,51 @@ void DatabaseMigrationTest::upgradesPersonalMetadataWithoutChangingExistingRecor
     }
     QCOMPARE(strings(library.path(), "SELECT title FROM placeholder WHERE id=7"), QStringList { "Missing issue" });
     QCOMPARE(ints(library.path(), "SELECT COUNT(*) FROM comic_info WHERE translatedTitle IS NOT NULL"), QList<int> { 0 });
+}
+
+void DatabaseMigrationTest::migratesLegacyFavoritesIntoSharedMetadata()
+{
+    QTemporaryDir library;
+    QVERIFY(library.isValid());
+    QVERIFY(QDir().mkpath(LibraryPaths::libraryDataPath(library.path())));
+    QString connection;
+    {
+        auto db = DataBaseManagement::createDatabase(LibraryPaths::libraryDatabasePath(library.path()));
+        connection = db.connectionName();
+        QSqlQuery query(db);
+        QVERIFY(query.exec("INSERT INTO comic_info (id,hash,title) VALUES (1,'same','Shared'), (2,'other','Other')"));
+        QVERIFY(query.exec("INSERT INTO comic (id,parentId,comicInfoId,fileName,path) VALUES (1,1,1,'a.cbz','/a.cbz'),(2,1,1,'b.cbz','/b.cbz'),(3,1,2,'c.cbz','/c.cbz')"));
+        QVERIFY(query.exec("INSERT INTO comic_default_reading_list VALUES (2,1,0)"));
+        QVERIFY(query.exec("ALTER TABLE comic_info DROP COLUMN favorite"));
+        QVERIFY(query.exec("ALTER TABLE placeholder DROP COLUMN favorite"));
+        QVERIFY(query.exec("UPDATE db_info SET version = '10.5.1'"));
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QVERIFY(DataBaseManagement::updateToCurrentVersion(library.path(), true));
+    QCOMPARE(ints(library.path(), "SELECT id FROM comic_info WHERE favorite = 1"), QList<int>({ 1 }));
+    QCOMPARE(ints(library.path(), "SELECT COUNT(*) FROM comic_default_reading_list"), QList<int>({ 0 }));
+    QCOMPARE(strings(library.path(), "SELECT title FROM comic_info ORDER BY id"), QStringList({ "Shared", "Other" }));
+}
+
+void DatabaseMigrationTest::addsPublicationTypeWithoutChangingFavorites()
+{
+    QTemporaryDir library;
+    QVERIFY(QDir().mkpath(LibraryPaths::libraryDataPath(library.path())));
+    QString connection;
+    {
+        auto db = DataBaseManagement::createDatabase(LibraryPaths::libraryDatabasePath(library.path()));
+        connection = db.connectionName();
+        QSqlQuery query(db);
+        QVERIFY(query.exec("INSERT INTO comic_info(id,hash,title,favorite) VALUES(1,'keep','Keep title',1)"));
+        QVERIFY(query.exec("ALTER TABLE comic_info DROP COLUMN publicationType"));
+        QVERIFY(query.exec("ALTER TABLE placeholder DROP COLUMN publicationType"));
+        QVERIFY(query.exec("UPDATE db_info SET version='10.5.2'"));
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QVERIFY(DataBaseManagement::updateToCurrentVersion(library.path(), true));
+    QCOMPARE(ints(library.path(), "SELECT favorite FROM comic_info WHERE id=1"), QList<int>({ 1 }));
+    QCOMPARE(strings(library.path(), "SELECT title FROM comic_info WHERE id=1"), QStringList({ "Keep title" }));
+    QCOMPARE(ints(library.path(), "SELECT publicationType IS NULL FROM comic_info WHERE id=1"), QList<int>({ 1 }));
 }
 
 QTEST_GUILESS_MAIN(DatabaseMigrationTest)

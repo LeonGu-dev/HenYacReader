@@ -38,6 +38,7 @@ private slots:
     void generatesCanonicalNamesAndValidatesWindowsNames();
     void filenamePreviewRequiresExplicitConfirmation();
     void renamePreservesBytesRejectsCollisionsAndRollsBack();
+    void favoriteHeartPreservesMixedValuesUntilEdited();
 };
 
 namespace {
@@ -54,6 +55,7 @@ DescriptiveComicMetadata sample()
     metadata.tags = QStringLiteral("日常\n冒险");
     metadata.color = true;
     metadata.censorship = "censored";
+    metadata.publicationType = "doujinshi";
     metadata.translationStatus = "translated";
     metadata.translator = QStringLiteral("示例汉化组");
     metadata.synopsis = "Legacy synopsis";
@@ -152,13 +154,14 @@ void ComicMetadataEditorTest::statusesCanBeCleared()
 {
     ComicMetadataEditor editor;
     editor.setMetadata({ sample() });
-    for (const auto &key : { "color", "censorship", "translationStatus" })
+    for (const auto &key : { "color", "censorship", "translationStatus", "publicationType" })
         editor.findChild<QButtonGroup *>(key)->buttons().first()->click();
     auto saved = sample();
     editor.editedMetadata().applyTo(saved);
     QVERIFY(saved.color.isNull());
     QVERIFY(saved.censorship.isNull());
     QVERIFY(saved.translationStatus.isNull());
+    QVERIFY(saved.publicationType.isNull());
 }
 
 void ComicMetadataEditorTest::storesMultipleCharactersAndTags()
@@ -400,6 +403,37 @@ void ComicMetadataEditorTest::renamePreservesBytesRejectsCollisionsAndRollsBack(
         QVERIFY2(rename.install(error), qPrintable(error));
         QVERIFY(rename.restore(error));
     }
+}
+
+void ComicMetadataEditorTest::favoriteHeartPreservesMixedValuesUntilEdited()
+{
+    auto first = sample();
+    auto second = first;
+    first.favorite = true;
+    second.favorite = false;
+    ComicMetadataEditor editor;
+    editor.setMetadata({ first, second });
+    QVERIFY(editor.editedMetadata().isEmpty());
+    auto *heart = editor.findChild<QAbstractButton *>("favorite");
+    QVERIFY(heart);
+    QVERIFY(!heart->isChecked());
+    heart->click();
+    auto patch = editor.editedMetadata();
+    QVERIFY(patch.contains(&DescriptiveComicMetadata::favorite));
+    patch.applyTo(first);
+    patch.applyTo(second);
+    QVERIFY(first.favorite.toBool());
+    QVERIFY(second.favorite.toBool());
+    editor.setMetadata({ first });
+    QVERIFY(heart->isChecked());
+    heart->click();
+    editor.editedMetadata().applyTo(first);
+    QVERIFY(!first.favorite.toBool());
+    QCOMPARE(first.title, second.title);
+    second.favorite = QVariant();
+    editor.setMetadata({ first, second });
+    QVERIFY(heart->toolTip().isEmpty());
+    QVERIFY(editor.editedMetadata().isEmpty());
 }
 
 QTEST_MAIN(ComicMetadataEditorTest)

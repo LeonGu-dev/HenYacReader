@@ -1619,6 +1619,8 @@ bool DataBaseManagement::updateToCurrentVersion(const QString &libraryPath, bool
     const bool pre9_16 = compareVersions(oldVersion, "9.16.0") < 0;
     const bool pre10_5 = compareVersions(oldVersion, "10.5.0") < 0;
     const bool prePersonalMetadata = compareVersions(oldVersion, "10.5.1") < 0;
+    const bool preFavoriteMetadata = compareVersions(oldVersion, "10.5.2") < 0;
+    const bool prePublicationType = compareVersions(oldVersion, "10.5.3") < 0;
 
     QString connectionName = "";
     bool returnValue = true;
@@ -1852,6 +1854,24 @@ bool DataBaseManagement::updateToCurrentVersion(const QString &libraryPath, bool
                         }
                         returnValue = addColumns(table, missingColumns, db) && returnValue;
                     }
+                }
+
+                if (preFavoriteMetadata && returnValue) {
+                    for (const auto &table : { QString("comic_info"), QString("placeholder") }) {
+                        if (db.record(table).indexOf("favorite") < 0)
+                            returnValue = addColumns(table, { "favorite BOOLEAN DEFAULT 0" }, db) && returnValue;
+                    }
+                    QSqlQuery migrateFavorites(db);
+                    returnValue = returnValue && migrateFavorites.exec("UPDATE comic_info SET favorite = 1 WHERE id IN ("
+                                                                       "SELECT c.comicInfoId FROM comic c INNER JOIN comic_default_reading_list f ON f.comic_id = c.id "
+                                                                       "WHERE f.default_reading_list_id = 1)");
+                    returnValue = returnValue && migrateFavorites.exec("DELETE FROM comic_default_reading_list WHERE default_reading_list_id = 1");
+                }
+
+                if (prePublicationType && returnValue) {
+                    for (const auto &table : { QString("comic_info"), QString("placeholder") })
+                        if (db.record(table).indexOf("publicationType") < 0)
+                            returnValue = addColumns(table, { "publicationType TEXT" }, db) && returnValue;
                 }
 
                 if (returnValue) {

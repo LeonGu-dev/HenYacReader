@@ -1,6 +1,7 @@
 #include "comic_metadata_editor.h"
 
 #include "comic_filename.h"
+#include "favorite_heart.h"
 
 #include <QButtonGroup>
 #include <QCheckBox>
@@ -224,6 +225,22 @@ ComicMetadataEditor::ComicMetadataEditor(QWidget *parent)
     };
     text("title", tr("Title"), &M::title);
     text("translatedTitle", tr("Translated title"), &M::translatedTitle);
+    favorite = new FavoriteHeartButton(this);
+    favorite->setObjectName("favorite");
+    favorite->setAccessibleName(tr("Favorite"));
+    auto *favoriteBox = new QWidget(this);
+    auto *favoriteLayout = new QHBoxLayout(favoriteBox);
+    favoriteLayout->setContentsMargins(0, 0, 0, 0);
+    favoriteLayout->addWidget(favorite);
+    favoriteLayout->addStretch();
+    form->addRow(tr("Favorite"), favoriteBox);
+    connect(favorite, &QAbstractButton::clicked, this, [this] {
+        favorite->mixed = false;
+        favorite->setToolTip(QString());
+        favorite->update();
+        if (!loading)
+            changed.insert("favorite");
+    });
 
     auto authorBox = new QWidget(this);
     auto authorLayout = new QVBoxLayout(authorBox);
@@ -310,6 +327,7 @@ ComicMetadataEditor::ComicMetadataEditor(QWidget *parent)
     };
     choice("color", tr("Color / black and white"), &M::color, { { tr("Color"), true }, { tr("Black and white"), false } });
     choice("censorship", tr("Censorship"), &M::censorship, { { tr("Censored"), QStringLiteral("censored") }, { tr("Uncensored"), QStringLiteral("uncensored") } });
+    choice("publicationType", tr("Publication type"), &M::publicationType, { { tr("Doujinshi"), QStringLiteral("doujinshi") }, { tr("Collected volume"), QStringLiteral("tankobon") }, { tr("Magazine"), QStringLiteral("magazine") } });
     choice("translationStatus", tr("Translation"), &M::translationStatus, { { tr("Japanese"), QStringLiteral("original") }, { tr("Chinese translation"), QStringLiteral("translated") }, { tr("AI translation"), QStringLiteral("ai") } });
     text("translator", tr("Translator"), &M::translator);
     updateAuthorMode();
@@ -350,6 +368,12 @@ void ComicMetadataEditor::setMetadata(const QList<DescriptiveComicMetadata> &rec
         it->edit->setExclusive(true);
     }
     bool mixed;
+    const bool firstFavorite = records.first().favorite.toBool();
+    mixed = std::any_of(records.begin(), records.end(), [firstFavorite](const auto &record) { return record.favorite.toBool() != firstFavorite; });
+    favorite->setChecked(!mixed && firstFavorite);
+    favorite->mixed = mixed;
+    favorite->setToolTip(mixed ? tr("Multiple values; unchanged") : QString());
+    favorite->update();
     const auto writers = splitValues(common(&DescriptiveComicMetadata::writer, mixed));
     authors->setValues(writers, mixed);
     singleAuthor->setText(writers.value(0));
@@ -423,6 +447,8 @@ DescriptiveMetadataPatch ComicMetadataEditor::editedMetadata() const
         patch.set(&M::characters, textValue(characters->values().join('\n')));
     if (changed.contains("tags"))
         patch.set(&M::tags, textValue(tags->values().join('\n')));
+    if (changed.contains("favorite"))
+        patch.set(&M::favorite, favorite->isChecked());
     return patch;
 }
 

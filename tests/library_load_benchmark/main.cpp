@@ -175,7 +175,7 @@ bool createLibrary(const QString &libraryPath, int size)
         QSqlQuery inLabel(db);
         inLabel.prepare("INSERT INTO label_entry (label_id, ordering, comic_info_id) VALUES (1, :id, :id)");
         QSqlQuery inFavorites(db);
-        inFavorites.prepare("INSERT INTO comic_default_reading_list (default_reading_list_id, comic_id, ordering) VALUES (1, :id, :id)");
+        inFavorites.prepare("UPDATE comic_info SET favorite = 1 WHERE id = :id");
 
         const auto now = QDateTime::currentSecsSinceEpoch();
         for (int i = 1; i <= size && success; i++) {

@@ -56,6 +56,8 @@ struct DescriptiveComicMetadata {
     QVariant censorship; // censored / uncensored, or NULL
     QVariant translationStatus; // original / translated / ai, or NULL
     QVariant translator; // one translator or translation group
+    QVariant favorite = false; // personal favorite state, shared by identical comics
+    QVariant publicationType; // doujinshi / tankobon / magazine, or NULL
 
     // the people and names of a multi-line field, one per line
     QStringList getWriters() const;
@@ -80,8 +82,8 @@ struct DescriptiveComicMetadata {
         QVariant DescriptiveComicMetadata::*member;
     };
 
-    static const std::array<Column, 44> &columns();
-    static const std::array<Column, 7> &personalColumns();
+    static const std::array<Column, 46> &columns();
+    static const std::array<Column, 9> &personalColumns();
 
     static QStringList assignments();
 
@@ -103,7 +105,7 @@ public:
 
 private:
     DescriptiveComicMetadata values;
-    std::bitset<44> fields;
+    std::bitset<46> fields;
 };
 
 #endif
