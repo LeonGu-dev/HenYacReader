@@ -4,7 +4,7 @@
 <context>
     <name>DBHelper</name>
     <message>
-        <location filename="../YACReaderLibrary/db_helper.cpp" line="1884"/>
+        <location filename="../YACReaderLibrary/db_helper.cpp" line="1876"/>
         <source>The folder entry could not be found in the library database.</source>
         <translation>De mapvermelding is niet gevonden in de database van de bibliotheek.</translation>
     </message>

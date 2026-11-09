@@ -4,7 +4,20 @@ from pathlib import Path
 
 path = Path(__file__).resolve().parents[2] / 'YACReaderLibrary/yacreaderlibrary_zh_CN.ts'
 translations = {
+    'QObject': {'Reading Lists': '阅读列表'},
+    'MetadataFilterPanel': {
+        'Doujinshi': '同人志', 'Collected volume': '单行本', 'Magazine': '杂志',
+        'Reset all filters': '重置所有筛选',
+        'Rating': '评分', '%1 stars': '%1星',
+        'Filter': '筛选', 'Search': '搜索', 'tag': 'tag', 'Work': '作品', 'Author': '作者',
+        'AND': '与', 'OR': '或', 'Filter favorite comics': '筛选最爱漫画',
+        'Switch to OR filtering': '调整筛选逻辑为或筛选', 'Switch to AND filtering': '调整筛选逻辑为与筛选',
+        'Black and white': '黑白', 'Color': '彩色', 'Censored': '有码', 'Uncensored': '无修正',
+        'Chinese translation': '中译', 'AI translation': 'AI翻译', 'No translation': '无翻译',
+    },
     'ComicMetadataEditor': {
+        'Publication type': '类型', 'Doujinshi': '同人志', 'Collected volume': '单行本', 'Magazine': '杂志',
+        'Favorite': '最爱',
         'Parse tags from filename': '从文件名解析标签', 'Generate filename': '生成文件名',
         'Current archive filename': '当前压缩包文件名',
         'Edit the filename without its extension': '可以修改新文件名；扩展名保持不变',
@@ -24,6 +37,16 @@ translations = {
     'PropertiesDialog': {
         'Rename is only available for one existing archive.': '只能为单个现存的压缩包生成新文件名。',
     },
+    'ComicModel': {
+        'Reading progress': '阅读进度', 'Author': '作者', 'Work / IP': '作品',
+        'Characters': '角色', 'Tags': 'tag', 'Color / black and white': '彩色/黑白',
+        'Censorship': '无修正', 'Translation': '翻译', 'Not set': '未设置',
+        'Color': '彩色', 'Black and white': '黑白', 'Censored': '有码',
+        'Uncensored': '无修', 'Japanese': '日文', 'Chinese translation': '中译',
+        'AI translation': 'AI 翻译',
+    },
+    'YACReaderTableView': { 'Change color': '更改颜色', 'The color could not be saved.': '颜色无法保存。' },
+    'ClassicComicsView': { 'Restore default columns': '恢复默认列' },
     'MetadataListEdit': {
         'Add item': '添加一项', 'Remove item': '移除这一项',
         'Multiple values; edit to replace': '多个值（修改后覆盖）',
