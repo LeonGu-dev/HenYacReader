@@ -5,74 +5,42 @@
 #include "cover_utils.h"
 #include "data_base_management.h"
 #include "db_helper.h"
-#include "folder_placeholder_match.h"
 #include "initial_comic_info_extractor.h"
-#include "overloaded.h"
 #include "placeholder_cover.h"
 #include "staged_comic_rename.h"
 #include "staged_cover.h"
-#include "tracked_issues.h"
 #include "yacreader_cover_label.h"
-#include "yacreader_field_edit.h"
-#include "yacreader_field_plain_text_edit.h"
 #include "yacreader_global_gui.h"
 
 #include <QApplication>
-#include <QCheckBox>
-#include <QComboBox>
 #include <QDateTime>
 #include <QDialogButtonBox>
 #include <QFileInfo>
-#include <QFormLayout>
+#include <QGridLayout>
 #include <QHBoxLayout>
-#include <QIntValidator>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSet>
-#include <QSizePolicy>
-#include <QTabWidget>
 #include <QToolButton>
-#include <QValidator>
 
 #include <memory>
 
 using namespace YACReader;
 
-namespace {
-// a key press or a paste that asks for too many issues does not change the text
-class TrackedIssuesValidator : public QValidator
-{
-public:
-    using QValidator::QValidator;
-    State validate(QString &input, int &) const override
-    {
-        return tooManyTrackedIssues(input) ? Invalid : Acceptable;
-    }
-};
-}
-
 PropertiesDialog::PropertiesDialog(QWidget *parent)
-    : QDialog(parent), updated(false)
+    : QDialog(parent)
 {
     createCoverBox();
-    createGeneralInfoBox();
-    createAuthorsBox();
-    createPublishingBox();
     createButtonBox();
-    createPlotBox();
-    createNotesBox(); // review, notes, tags
 
-    createTabBar();
     auto rootLayout = new QGridLayout;
 
     cover = new YACReader::CoverLabel();
     connect(cover, &YACReader::CoverLabel::imageDropped, this, &PropertiesDialog::loadCustomCoverImageFromPath);
 
     mainLayout = new QGridLayout;
-    mainLayout->addWidget(tabBar, 0, 0);
-    tabBar->hide();
     metadataEditor = new ComicMetadataEditor;
     metadataScroll = new QScrollArea;
     metadataScroll->setFrameShape(QFrame::NoFrame);
@@ -103,11 +71,6 @@ PropertiesDialog::PropertiesDialog(QWidget *parent)
     rootLayout->setColumnStretch(0, 2);
     rootLayout->setColumnStretch(1, 3);
 
-    QScreen *screen = parent != nullptr ? parent->window()->screen() : nullptr;
-    if (screen == nullptr) {
-        screen = QApplication::screens().constFirst();
-    }
-
     this->setLayout(rootLayout);
 
     this->setContentsMargins(0, 0, 0, 0);
@@ -123,16 +86,6 @@ QSize PropertiesDialog::sizeHint() const
     return QSize(1040, 720);
 }
 
-void PropertiesDialog::createTabBar()
-{
-    tabBar = new QTabWidget;
-    tabBar->addTab(generalInfoBox, tr("General info"));
-    tabBar->addTab(plotBox, tr("Plot"));
-    tabBar->addTab(authorsBox, tr("Authors"));
-    tabBar->addTab(publishingBox, tr("Publishing"));
-    tabBar->addTab(notesBox, tr("Notes"));
-}
-
 void PropertiesDialog::createCoverBox()
 {
     coverBox = new QWidget;
@@ -143,8 +96,6 @@ void PropertiesDialog::createCoverBox()
     label->setStyleSheet("QLabel {color: white; font-weight:bold; font-size:14px;}");
     layout->addWidget(label, 0, Qt::AlignVCenter);
     layout->addStretch();
-
-    coverPageEdit = new YACReaderFieldEdit();
 
     showPreviousCoverPageButton = new QToolButton();
     showPreviousCoverPageButton->setIcon(QIcon(":/images/metadata_dialog/previousCoverPage.svg"));
@@ -179,7 +130,6 @@ void PropertiesDialog::createCoverBox()
     layout->addSpacing(5);
     layout->addWidget(loadCustomCoverImageButton, 0, Qt::AlignVCenter);
 
-    coverPageEdit->setStyleSheet("QLineEdit {border:none;}");
     layout->setSpacing(0);
 
     coverBox->setLayout(layout);
@@ -198,233 +148,6 @@ void PropertiesDialog::createCoverBox()
     connect(loadCustomCoverImageButton, &QAbstractButton::clicked, this, &PropertiesDialog::loadCustomCoverImage);
 }
 
-void PropertiesDialog::createGeneralInfoBox()
-{
-    generalInfoBox = new QWidget;
-
-    auto generalInfoLayout = new QFormLayout;
-
-    generalInfoLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-    generalInfoLayout->setRowWrapPolicy(QFormLayout::WrapAllRows);
-    generalInfoLayout->addRow(tr("Series:"), series = new YACReaderFieldEdit());
-    generalInfoLayout->addRow(tr("Title:"), title = new YACReaderFieldEdit());
-
-    auto number = new QHBoxLayout;
-    number->addWidget(numberEdit = new YACReaderFieldEdit());
-    number->addWidget(issuesEdit = new QLineEdit(), 1);
-    issuesEdit->setPlaceholderText(tr("e.g. 1-5, 8, 0.5, Annual 1"));
-    issuesEdit->setValidator(new TrackedIssuesValidator(issuesEdit));
-    issuesEdit->hide();
-    connect(issuesEdit, &QLineEdit::textChanged, this, &PropertiesDialog::updateIssuesSummary);
-    number->addWidget(new QLabel(tr("of:")));
-    number->addWidget(countEdit = new YACReaderFieldEdit());
-    countValidator.setBottom(0);
-    countEdit->setValidator(&countValidator);
-    number->addStretch(1);
-    auto numberAndSummary = new QVBoxLayout;
-    numberAndSummary->addLayout(number);
-    numberAndSummary->addWidget(issuesSummary = new QLabel());
-    issuesSummary->setWordWrap(true);
-    issuesSummary->hide();
-    generalInfoLayout->addRow(numberLabel = new QLabel(tr("Issue number:")), numberAndSummary);
-
-    generalInfoLayout->addRow(tr("Volume:"), volumeEdit = new YACReaderFieldEdit());
-    for (auto *edit : { series, title, volumeEdit })
-        connect(edit, &QLineEdit::textChanged, this, &PropertiesDialog::updateIssuesSummary);
-
-    auto arc = new QHBoxLayout;
-    arc->addWidget(storyArcEdit = new YACReaderFieldEdit(), 1);
-    storyArcEdit->setMinimumWidth(200);
-    arc->addWidget(new QLabel(tr("Arc number:")));
-    arc->addWidget(arcNumberEdit = new YACReaderFieldEdit());
-    arc->addWidget(new QLabel(tr("of:")));
-    arc->addWidget(arcCountEdit = new YACReaderFieldEdit());
-    arcCountValidator.setBottom(0);
-    arcCountEdit->setValidator(&arcCountValidator);
-    generalInfoLayout->addRow(tr("Story arc:"), arc);
-
-    auto alternate = new QHBoxLayout;
-    alternate->addWidget(alternateSeriesEdit = new YACReaderFieldEdit(), 1);
-    alternateSeriesEdit->setMinimumWidth(200);
-    alternate->addWidget(new QLabel(tr("alt. number:")));
-    alternate->addWidget(alternateNumberEdit = new YACReaderFieldEdit());
-    alternate->addWidget(new QLabel(tr("of:")));
-    alternate->addWidget(alternateCountEdit = new YACReaderFieldEdit());
-    arcCountValidator.setBottom(0);
-    alternateCountEdit->setValidator(&arcCountValidator);
-    generalInfoLayout->addRow(tr("Alternate series:"), alternate);
-
-    generalInfoLayout->addRow(tr("Series Group:"), seriesGroupEdit = new YACReaderFieldEdit());
-
-    generalInfoLayout->addRow(tr("Genre:"), genereEdit = new YACReaderFieldEdit());
-
-    generalInfoLayout->addRow(tr("Size:"), size = new QLabel("size"));
-
-    auto main = new QVBoxLayout;
-    main->addLayout(generalInfoLayout);
-    main->addStretch();
-    main->addWidget(comicVineLink = new QLabel("Comic Vine link : ..."));
-    comicVineLink->setOpenExternalLinks(true);
-
-    generalInfoBox->setLayout(main);
-}
-
-void PropertiesDialog::createAuthorsBox()
-{
-    authorsBox = new QWidget;
-
-    auto authorsLayout = new QVBoxLayout;
-
-    auto h1 = new QHBoxLayout;
-    auto vl1 = new QVBoxLayout;
-    auto vr1 = new QVBoxLayout;
-    vl1->addWidget(new QLabel(tr("Writer(s):")));
-    vl1->addWidget(writer = new YACReaderFieldPlainTextEdit());
-    h1->addLayout(vl1);
-    vr1->addWidget(new QLabel(tr("Penciller(s):")));
-    vr1->addWidget(penciller = new YACReaderFieldPlainTextEdit());
-    h1->addLayout(vr1);
-
-    auto h2 = new QHBoxLayout;
-    auto vl2 = new QVBoxLayout;
-    auto vr2 = new QVBoxLayout;
-    vl2->addWidget(new QLabel(tr("Inker(s):")));
-    vl2->addWidget(inker = new YACReaderFieldPlainTextEdit());
-    h2->addLayout(vl2);
-    vr2->addWidget(new QLabel(tr("Colorist(s):")));
-    vr2->addWidget(colorist = new YACReaderFieldPlainTextEdit());
-    h2->addLayout(vr2);
-
-    auto h3 = new QHBoxLayout;
-    auto vl3 = new QVBoxLayout;
-    auto vr3 = new QVBoxLayout;
-    vl3->addWidget(new QLabel(tr("Letterer(s):")));
-    vl3->addWidget(letterer = new YACReaderFieldPlainTextEdit());
-    h3->addLayout(vl3);
-    vr3->addWidget(new QLabel(tr("Cover Artist(s):")));
-    vr3->addWidget(coverArtist = new YACReaderFieldPlainTextEdit());
-    h3->addLayout(vr3);
-
-    auto h4 = new QHBoxLayout;
-    auto vl4 = new QVBoxLayout;
-    auto vr4 = new QVBoxLayout;
-    vl4->addWidget(new QLabel(tr("Editor(s):")));
-    vl4->addWidget(editor = new YACReaderFieldPlainTextEdit());
-    h4->addLayout(vl4);
-    vr4->addWidget(new QLabel(tr("Imprint:")));
-    vr4->addWidget(imprint = new YACReaderFieldPlainTextEdit());
-    h4->addLayout(vr4);
-
-    authorsLayout->addLayout(h1);
-    authorsLayout->addLayout(h2);
-    authorsLayout->addLayout(h3);
-    authorsLayout->addLayout(h4);
-    authorsLayout->addStretch(1);
-    authorsBox->setLayout(authorsLayout);
-}
-
-void PropertiesDialog::createPublishingBox()
-{
-    publishingBox = new QWidget;
-
-    auto publishingLayout = new QFormLayout;
-
-    publishingLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-
-    auto date = new QHBoxLayout;
-    date->addWidget(new QLabel(tr("Day:")));
-    date->addWidget(dayEdit = new YACReaderFieldEdit());
-    dayValidator.setRange(1, 31);
-    dayEdit->setValidator(&dayValidator);
-    date->addWidget(new QLabel(tr("Month:")));
-    date->addWidget(monthEdit = new YACReaderFieldEdit());
-    monthValidator.setRange(1, 12);
-    monthEdit->setValidator(&monthValidator);
-    date->addWidget(new QLabel(tr("Year:")));
-    date->addWidget(yearEdit = new YACReaderFieldEdit());
-    yearValidator.setRange(1, 9999);
-    yearEdit->setValidator(&yearValidator);
-    date->addStretch(1);
-
-    publishingLayout->setRowWrapPolicy(QFormLayout::WrapAllRows);
-    publishingLayout->addRow(date);
-    publishingLayout->addRow(tr("Publisher:"), publisherEdit = new YACReaderFieldEdit());
-    publishingLayout->addRow(tr("Format:"), formatEdit = new YACReaderFieldEdit());
-    publishingLayout->addRow(tr("Color/BW:"), colorCheck = new QCheckBox());
-    publishingLayout->addRow(tr("Age rating:"), ageRatingEdit = new YACReaderFieldEdit());
-    publishingLayout->addRow(tr("Type:"), typeCombo = new QComboBox());
-    publishingLayout->addRow(tr("Language (ISO):"), languageEdit = new YACReaderFieldEdit());
-
-    typeCombo->addItem("Comic");
-    typeCombo->addItem("Manga");
-    typeCombo->addItem("Western Manga");
-    typeCombo->addItem("Web Comic");
-    typeCombo->addItem("4koma");
-
-    typeCombo->setCurrentIndex(-1);
-
-    publishingBox->setLayout(publishingLayout);
-}
-
-void PropertiesDialog::createPlotBox()
-{
-    plotBox = new QWidget;
-
-    auto plotLayout = new QVBoxLayout;
-
-    auto h1 = new QHBoxLayout;
-    auto vl1 = new QVBoxLayout;
-    vl1->addWidget(new QLabel(tr("Synopsis:")));
-    vl1->addWidget(synopsis = new YACReaderFieldPlainTextEdit());
-    h1->addLayout(vl1);
-
-    auto h2 = new QHBoxLayout;
-    auto vl2 = new QVBoxLayout;
-    auto vr2 = new QVBoxLayout;
-    vl2->addWidget(new QLabel(tr("Characters:")));
-    vl2->addWidget(characters = new YACReaderFieldPlainTextEdit());
-    h2->addLayout(vl2);
-    vr2->addWidget(new QLabel(tr("Teams:")));
-    vr2->addWidget(teams = new YACReaderFieldPlainTextEdit());
-    h2->addLayout(vr2);
-
-    auto h3 = new QHBoxLayout;
-    auto vl3 = new QVBoxLayout;
-    vl3->addWidget(new QLabel(tr("Locations:")));
-    vl3->addWidget(locations = new YACReaderFieldPlainTextEdit());
-    h3->addLayout(vl3);
-
-    auto h4 = new QHBoxLayout;
-    auto vl4 = new QVBoxLayout;
-    vl4->addWidget(new QLabel(tr("Main character or team:")));
-    vl4->addWidget(mainCharacterOrTeamEdit = new YACReaderFieldEdit());
-    h4->addLayout(vl4);
-
-    plotLayout->addLayout(h1);
-    plotLayout->addLayout(h2);
-    plotLayout->addLayout(h3);
-    plotLayout->addLayout(h4);
-    plotLayout->addStretch(1);
-
-    plotBox->setLayout(plotLayout);
-}
-
-void PropertiesDialog::createNotesBox()
-{
-    notesBox = new QWidget;
-
-    auto notesLayout = new QFormLayout;
-    notesLayout->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
-
-    notesLayout->setRowWrapPolicy(QFormLayout::WrapAllRows);
-
-    notesLayout->addRow(tr("Review:"), review = new YACReaderFieldPlainTextEdit());
-    notesLayout->addRow(tr("Notes:"), notes = new YACReaderFieldPlainTextEdit());
-    notesLayout->addRow(tr("Tags:"), tags = new YACReaderFieldPlainTextEdit());
-
-    notesBox->setLayout(notesLayout);
-}
-
 void PropertiesDialog::createButtonBox()
 {
     buttonBox = new QDialogButtonBox;
@@ -433,8 +156,6 @@ void PropertiesDialog::createButtonBox()
     saveButton = buttonBox->addButton(QDialogButtonBox::Save);
     previousButton = buttonBox->addButton("<", QDialogButtonBox::ButtonRole::NoRole);
     nextButton = buttonBox->addButton(">", QDialogButtonBox::ButtonRole::NoRole);
-
-    saveButtonText = saveButton->text();
 
     connect(closeButton, &QAbstractButton::clicked, this, &PropertiesDialog::close);
     connect(saveButton, &QAbstractButton::clicked, this, &PropertiesDialog::saveAndClose);
@@ -513,121 +234,26 @@ QImage blurred(const QImage &image, const QRect &rect, int radius, bool alphaOnl
 void PropertiesDialog::loadComic(const ComicRecord &record)
 {
     customCover = QImage();
-
-    const auto &info = recordMetadata(record);
     const auto *comicInfo = recordInfo(record);
     const auto *comic = recordComic(record);
-
-    series->setText(info.series.isNull() ? QString() : info.series.toString());
-    title->setText(info.title.isNull() ? QString() : info.title.toString());
-
-    if (!info.comicVineID.isNull()) {
-        comicVineLink->setHidden(false);
-        comicVineLink->setText(QString(tr("Comic Vine link: <a style='color: #FFCB00; text-decoration:none; font-weight:bold;' href=\"http://www.comicvine.com/comic/4000-%1/\"> view </a>").arg(info.comicVineID.toString())));
-    } else
-        comicVineLink->setHidden(true);
-
     coverChanged = false;
     showPreviousCoverPageButton->setEnabled(comic != nullptr);
     showNextCoverPageButton->setEnabled(comic != nullptr);
     resetCoverButton->setEnabled(comic != nullptr);
     loadCustomCoverImageButton->setEnabled(true);
-
-    if (comicInfo != nullptr && !comicInfo->coverPage.isNull()) {
-        coverPageEdit->setText(comicInfo->coverPage.toString());
-        coverPageValidator.setRange(1, comicInfo->numPages.toInt());
-        coverPageEdit->setValidator(&coverPageValidator);
-        //----------
-        int coverPage = comicInfo->coverPage.toInt();
-        coverPageNumberLabel->setText(QString::number(coverPage));
-        coverPageNumberLabel->adjustSize();
-
-        updateCoverBoxForSingleComic();
-
-        if (comic != nullptr && !QFileInfo(basePath + comic->file.path).exists()) {
-            QMessageBox::warning(this, tr("Not found"), tr("Comic not found. You should update your library."));
-            showPreviousCoverPageButton->setDisabled(true);
-            showNextCoverPageButton->setDisabled(true);
-        }
-    } else {
-        coverPageNumberLabel->setText("1");
+    updateCoverPageNumberLabel(comicInfo && !comicInfo->coverPage.isNull() ? comicInfo->coverPage.toInt() : 1);
+    updateCoverBoxForSingleComic();
+    if (comic && !QFileInfo(basePath + comic->file.path).exists()) {
+        QMessageBox::warning(this, tr("Not found"), tr("Comic not found. You should update your library."));
+        showPreviousCoverPageButton->setDisabled(true);
+        showNextCoverPageButton->setDisabled(true);
     }
-
-    numberEdit->setText(info.number.isNull() ? QString() : info.number.toString());
-    countEdit->setText(info.count.isNull() ? QString() : info.count.toString());
-    volumeEdit->setText(info.volume.isNull() ? QString() : info.volume.toString());
-    storyArcEdit->setText(info.storyArc.isNull() ? QString() : info.storyArc.toString());
-    arcNumberEdit->setText(info.arcNumber.isNull() ? QString() : info.arcNumber.toString());
-    arcCountEdit->setText(info.arcCount.isNull() ? QString() : info.arcCount.toString());
-    alternateSeriesEdit->setText(info.alternateSeries.isNull() ? QString() : info.alternateSeries.toString());
-    alternateNumberEdit->setText(info.alternateNumber.isNull() ? QString() : info.alternateNumber.toString());
-    alternateCountEdit->setText(info.alternateCount.isNull() ? QString() : info.alternateCount.toString());
-    seriesGroupEdit->setText(info.seriesGroup.isNull() ? QString() : info.seriesGroup.toString());
-    genereEdit->setText(info.genere.isNull() ? QString() : info.genere.toString());
-
-    writer->setPlainText(info.writer.isNull() ? QString() : info.writer.toString());
-    penciller->setPlainText(info.penciller.isNull() ? QString() : info.penciller.toString());
-    inker->setPlainText(info.inker.isNull() ? QString() : info.inker.toString());
-    colorist->setPlainText(info.colorist.isNull() ? QString() : info.colorist.toString());
-    letterer->setPlainText(info.letterer.isNull() ? QString() : info.letterer.toString());
-    coverArtist->setPlainText(info.coverArtist.isNull() ? QString() : info.coverArtist.toString());
-    editor->setPlainText(info.editor.isNull() ? QString() : info.editor.toString());
-    imprint->setPlainText(info.imprint.isNull() ? QString() : info.imprint.toString());
-
-    if (comicInfo != nullptr)
-        size->setText(QString::number(comicInfo->hash.right(comicInfo->hash.length() - 40).toInt() / 1024.0 / 1024.0, 'f', 2) + "Mb");
-    else
-        size->setText("-");
-
-    if (!info.date.isNull()) {
-        QStringList date = (info.date.toString()).split("/");
-
-        if (date.length() == 3) {
-            dayEdit->setText(date[0]);
-            monthEdit->setText(date[1]);
-            yearEdit->setText(date[2]);
-        }
-    } else {
-        dayEdit->setText(QString());
-        monthEdit->setText(QString());
-        yearEdit->setText(QString());
-    }
-
-    publisherEdit->setText(info.publisher.isNull() ? QString() : info.publisher.toString());
-    formatEdit->setText(info.format.isNull() ? QString() : info.format.toString());
-
-    if (!info.color.isNull())
-        colorCheck->setChecked(info.color.toBool());
-    else
-        colorCheck->setCheckState(Qt::PartiallyChecked);
-
-    // a placeholder has no type
-    typeCombo->setEnabled(comicInfo != nullptr);
-    typeCombo->setCurrentIndex(comicInfo != nullptr ? comicInfo->type.toInt() : -1);
-
-    languageEdit->setText(info.languageISO.isNull() ? QString() : info.languageISO.toString());
-    ageRatingEdit->setText(info.ageRating.isNull() ? QString() : info.ageRating.toString());
-
-    synopsis->setPlainText(info.synopsis.isNull() ? QString() : info.synopsis.toString());
-    characters->setPlainText(info.characters.isNull() ? QString() : info.characters.toString());
-    teams->setPlainText(info.teams.isNull() ? QString() : info.teams.toString());
-    locations->setPlainText(info.locations.isNull() ? QString() : info.locations.toString());
-    mainCharacterOrTeamEdit->setText(info.mainCharacterOrTeam.isNull() ? QString() : info.mainCharacterOrTeam.toString());
-
-    review->setPlainText(info.review.isNull() ? QString() : info.review.toString());
-    notes->setPlainText(info.notes.isNull() ? QString() : info.notes.toString());
-    tags->setPlainText(info.tags.isNull() ? QString() : info.tags.toString());
-
-    loadedColorState = colorCheck->checkState();
-    loadedTypeIndex = typeCombo->currentIndex();
-
-    this->setWindowTitle(tr("Edit comic information"));
+    setWindowTitle(tr("Edit comic information"));
     setCover(coverOf(record));
-    metadataEditor->setMetadata({ info });
-    metadataEditor->setFileName(comic != nullptr ? recordFileName(record) : QString());
+    metadataEditor->setMetadata({ recordMetadata(record) });
+    metadataEditor->setFileName(comic ? recordFileName(record) : QString());
 }
 
-// a deleted comic or a placeholder shows its cover in grayscale, or the default image when there is no cover file
 QPixmap PropertiesDialog::coverOf(const ComicRecord &record) const
 {
     if (const auto *comic = recordComic(record))
@@ -669,353 +295,26 @@ void PropertiesDialog::updateButtons()
 
 void PropertiesDialog::setComics(QList<ComicRecord> records)
 {
+    if (records.isEmpty())
+        return;
     sequentialEditing = false;
-
     updated = false;
     currentComicIndex = 0;
-    coverChanged = false;
-    customCover = QImage();
-
     this->records = records;
-
-    loadComic(records[0]);
-
+    loadComic(records.first());
     updateButtons();
-
     if (records.length() > 1) {
         updateCoverBoxForMultipleComics();
-
-        // the reset needs the file, so it skips the deleted comics
         resetCoverButton->setEnabled(lastComicWithFile() != nullptr);
-        loadCustomCoverImageButton->setEnabled(true);
-
-        setDisableUniqueValues(true);
-        this->setWindowTitle(tr("Edit selected comics information"));
+        setWindowTitle(tr("Edit selected comics information"));
         setMultipleCover();
-
-        for (auto itr = ++records.cbegin(); itr != records.cend(); itr++) {
-            const auto &info = recordMetadata(*itr);
-
-            if (info.series.isNull() || info.series.toString() != series->text())
-                series->clear();
-
-            if (info.title.isNull() || info.title.toString() != title->text())
-                title->clear();
-
-            if (info.count.isNull() || info.count.toString() != countEdit->text())
-                countEdit->clear();
-
-            if (info.volume.isNull() || info.volume.toString() != volumeEdit->text())
-                volumeEdit->clear();
-            if (info.storyArc.isNull() || info.storyArc.toString() != storyArcEdit->text())
-                storyArcEdit->clear();
-            if (info.arcCount.isNull() || info.arcCount.toString() != arcCountEdit->text())
-                arcCountEdit->clear();
-
-            if (info.alternateSeries.isNull() || info.alternateSeries.toString() != alternateSeriesEdit->text())
-                alternateSeriesEdit->clear();
-            if (info.alternateCount.isNull() || info.alternateCount.toString() != alternateCountEdit->text())
-                alternateCountEdit->clear();
-
-            if (info.genere.isNull() || info.genere.toString() != genereEdit->text())
-                genereEdit->clear();
-            if (info.seriesGroup.isNull() || info.seriesGroup.toString() != seriesGroupEdit->text())
-                seriesGroupEdit->clear();
-
-            if (info.writer.isNull() || info.writer.toString() != writer->toPlainText())
-                writer->clear();
-            if (info.penciller.isNull() || info.penciller.toString() != penciller->toPlainText())
-                penciller->clear();
-            if (info.inker.isNull() || info.inker.toString() != inker->toPlainText())
-                inker->clear();
-            if (info.colorist.isNull() || info.colorist.toString() != colorist->toPlainText())
-                colorist->clear();
-            if (info.letterer.isNull() || info.letterer.toString() != letterer->toPlainText())
-                letterer->clear();
-            if (info.coverArtist.isNull() || info.coverArtist.toString() != coverArtist->toPlainText())
-                coverArtist->clear();
-            if (info.editor.isNull() || info.editor.toString() != editor->toPlainText())
-                editor->clear();
-            if (info.imprint.isNull() || info.imprint.toString() != imprint->toPlainText())
-                imprint->clear();
-
-            if (info.date.isNull()) {
-                dayEdit->clear();
-                monthEdit->clear();
-                yearEdit->clear();
-            } else {
-                QStringList date = info.date.toString().split("/");
-                if (dayEdit->text() != date[0])
-                    dayEdit->clear();
-                if (monthEdit->text() != date[1])
-                    monthEdit->clear();
-                if (yearEdit->text() != date[2])
-                    yearEdit->clear();
-            }
-
-            if (info.publisher.isNull() || info.publisher.toString() != publisherEdit->text())
-                publisherEdit->clear();
-            if (info.format.isNull() || info.format.toString() != formatEdit->text())
-                formatEdit->clear();
-            if (info.color.isNull() || info.color.toBool() != colorCheck->isChecked())
-                colorCheck->setCheckState(Qt::PartiallyChecked);
-
-            if (info.languageISO.toString() != languageEdit->text())
-                languageEdit->clear();
-
-            if (info.ageRating.isNull() || info.ageRating.toString() != ageRatingEdit->text())
-                ageRatingEdit->clear();
-
-            if (info.synopsis.isNull() || info.synopsis.toString() != synopsis->toPlainText())
-                synopsis->clear();
-            if (info.characters.isNull() || info.characters.toString() != characters->toPlainText())
-                characters->clear();
-            if (info.teams.isNull() || info.teams.toString() != teams->toPlainText())
-                teams->clear();
-            if (info.locations.isNull() || info.locations.toString() != locations->toPlainText())
-                locations->clear();
-            if (info.mainCharacterOrTeam.isNull() || info.mainCharacterOrTeam.toString() != mainCharacterOrTeamEdit->text())
-                mainCharacterOrTeamEdit->clear();
-
-            if (info.review.isNull() || info.review.toString() != review->toPlainText())
-                review->clear();
-            if (info.notes.isNull() || info.notes.toString() != notes->toPlainText())
-                notes->clear();
-            if (info.tags.isNull() || info.tags.toString() != tags->toPlainText())
-                tags->clear();
-        }
-
-        // the type of the comics, when they all have the same; placeholders have none
-        std::optional<int> type;
-        bool sameType = true;
-        for (const auto &record : std::as_const(records)) {
-            const auto *info = recordInfo(record);
-            if (info == nullptr)
-                continue;
-            if (type && *type != info->type.toInt())
-                sameType = false;
-            type = info->type.toInt();
-        }
-        typeCombo->setEnabled(type.has_value());
-        typeCombo->setCurrentIndex(type && sameType ? *type : -1);
-
-        loadedColorState = colorCheck->checkState();
-        loadedTypeIndex = typeCombo->currentIndex();
     }
     QList<DescriptiveComicMetadata> metadata;
-    for (const auto &record : std::as_const(records))
+    for (const auto &record : records)
         metadata.append(recordMetadata(record));
     metadataEditor->setMetadata(metadata);
-    if (records.size() != 1)
+    if (records.length() > 1)
         metadataEditor->setFileName(QString());
-}
-
-void PropertiesDialog::setTrackMissingIssues(FolderId folderId, const QString &folderName, const DescriptiveComicMetadata &run, const QStringList &folderNumbers)
-{
-    sequentialEditing = false;
-    updated = false;
-    coverChanged = false;
-    customCover = QImage();
-    records.clear();
-    trackedIn = folderId;
-    trackedFolderNumberKeys.clear();
-    for (const auto &number : folderNumbers)
-        trackedFolderNumberKeys.insert(issueNumberKey(number));
-
-    setTrackMode(true);
-    setWindowTitle(tr("Track missing issues in \"%1\"").arg(folderName));
-    series->setText(run.series.toString());
-    volumeEdit->setText(run.volume.toString());
-    publisherEdit->setText(run.publisher.toString());
-    issuesEdit->setText(missingIssueRanges(folderNumbers));
-    updateIssuesSummary();
-}
-
-void PropertiesDialog::setTrackMissingIssues(ReadingListId readingListId, const QString &listName)
-{
-    sequentialEditing = false;
-    updated = false;
-    coverChanged = false;
-    customCover = QImage();
-    records.clear();
-    trackedIn = readingListId;
-    trackedFolderNumberKeys.clear();
-
-    setTrackMode(true);
-    setWindowTitle(tr("Track missing issues in \"%1\"").arg(listName));
-    updateIssuesSummary();
-}
-
-// the per-issue fields are disabled; per-issue data comes later with Comic Vine or Edit metadata
-void PropertiesDialog::setTrackMode(bool track)
-{
-    tabBar->setVisible(track);
-    metadataScroll->setVisible(!track);
-    numberEdit->setHidden(track);
-    numberLabel->setText(track ? tr("Issues:") : tr("Issue number:"));
-    issuesEdit->setVisible(track);
-    issuesSummary->setVisible(track);
-    coverBox->setHidden(track);
-    comicVineLink->setHidden(track);
-    previousButton->hide();
-    nextButton->hide();
-
-    typeCombo->setDisabled(track);
-    trackingOneIssue = !track;
-    setTrackingOneIssue(!track);
-
-    saveButton->setText(track ? tr("Track") : saveButtonText);
-    saveButton->setEnabled(true);
-
-    if (!track)
-        return;
-    typeCombo->setCurrentIndex(-1);
-    size->setText("-");
-    setCover(QPixmap::fromImage(QImage(":/images/unavailableCover.png").convertToFormat(QImage::Format_Grayscale8)));
-    // the fields start empty: no "Click to overwrite"
-    for (auto *edit : std::initializer_list<YACReaderFieldEdit *> { series, title, countEdit, volumeEdit, storyArcEdit, arcNumberEdit, arcCountEdit, alternateSeriesEdit, alternateNumberEdit, alternateCountEdit, seriesGroupEdit, genereEdit,
-                                                                    dayEdit, monthEdit, yearEdit, publisherEdit, formatEdit, languageEdit, ageRatingEdit, mainCharacterOrTeamEdit })
-        edit->setPlaceholderText(QString());
-    for (auto *edit : std::initializer_list<YACReaderFieldPlainTextEdit *> { writer, penciller, inker, colorist, letterer, coverArtist, editor, imprint, synopsis, characters, teams, locations, review, notes, tags })
-        edit->setPlainText(QString());
-}
-
-// with several issues the values of one issue stay, unused, until there is one issue again
-void PropertiesDialog::setTrackingOneIssue(bool one)
-{
-    // YACReaderFieldEdit::setDisabled also hides its hint
-    for (auto *edit : std::initializer_list<YACReaderFieldEdit *> { title, arcNumberEdit, alternateNumberEdit, dayEdit, monthEdit, yearEdit })
-        edit->setDisabled(!one);
-    tabBar->setTabEnabled(tabBar->indexOf(plotBox), one);
-    tabBar->setTabEnabled(tabBar->indexOf(notesBox), one);
-    if (!trackedIn)
-        return;
-
-    trackingOneIssue = one;
-    coverBox->setVisible(one);
-    showPreviousCoverPageButton->hide();
-    showNextCoverPageButton->hide();
-    coverPageNumberLabel->hide();
-    resetCoverButton->setEnabled(false);
-    loadCustomCoverImageButton->setEnabled(one);
-    const auto shown = one && !customCover.isNull() ? customCover : QImage(":/images/unavailableCover.png");
-    setCover(QPixmap::fromImage(shown.convertToFormat(QImage::Format_Grayscale8)));
-}
-
-void PropertiesDialog::updateIssuesSummary()
-{
-    if (!trackedIn)
-        return;
-
-    const auto issues = parseTrackedIssues(issuesEdit->text());
-    QStringList newNumbers;
-    int inFolder = 0;
-    for (const auto &number : issues.numbers) {
-        if (trackedFolderNumberKeys.contains(issueNumberKey(number)))
-            inFolder++;
-        else
-            newNumbers.append(number);
-    }
-
-    QString summary;
-    if (issues.tooMany) {
-        summary = tr("At most %1 issues can be tracked at once.").arg(maxTrackedIssues);
-    } else if (!issues.valid) {
-        summary = tr("Check the issues: a range must go up, and a part between commas cannot be empty.");
-    } else if (newNumbers.isEmpty()) {
-        summary = tr("No new issues to track.");
-    } else {
-        summary = tr("%n issue(s) will be tracked: %1.", "", newNumbers.size()).arg(compactIssues(newNumbers));
-        if (newNumbers.size() > 1000)
-            summary += QStringLiteral(" ") + tr("That is a lot of issues; check the numbers.");
-    }
-    if (inFolder > 0)
-        summary += QStringLiteral(" ") + tr("%n issue(s) already in the folder.", "", inFolder);
-    if (issues.repeated > 0)
-        summary += QStringLiteral(" ") + tr("%n repeated issue(s).", "", issues.repeated);
-
-    const bool one = issues.valid && newNumbers.size() == 1;
-    const bool inReadingList = std::holds_alternative<ReadingListId>(*trackedIn);
-    const bool named = !series->text().trimmed().isEmpty() || !volumeEdit->text().trimmed().isEmpty() || (one && !title->text().trimmed().isEmpty());
-    if (inReadingList && !named)
-        summary += QStringLiteral(" ") + (one ? tr("Set a series, a volume, or a title.") : tr("Set a series or a volume."));
-
-    issuesSummary->setText(summary);
-    saveButton->setEnabled(issues.valid && !newNumbers.isEmpty() && (named || !inReadingList));
-
-    if (one != trackingOneIssue)
-        setTrackingOneIssue(one);
-}
-
-DescriptiveMetadataPatch PropertiesDialog::trackedMetadata() const
-{
-    using M = DescriptiveComicMetadata;
-    DescriptiveMetadataPatch patch;
-    const auto set = [&patch](QVariant M::*field, const QString &text) {
-        if (!text.trimmed().isEmpty())
-            patch.set(field, text.trimmed());
-    };
-
-    const std::initializer_list<std::pair<YACReaderFieldEdit *, QVariant M::*>> lines = {
-        { series, &M::series }, { countEdit, &M::count }, { volumeEdit, &M::volume }, { storyArcEdit, &M::storyArc }, { arcCountEdit, &M::arcCount }, { alternateSeriesEdit, &M::alternateSeries }, { alternateCountEdit, &M::alternateCount }, { seriesGroupEdit, &M::seriesGroup }, { genereEdit, &M::genere }, { publisherEdit, &M::publisher }, { formatEdit, &M::format }, { languageEdit, &M::languageISO }, { ageRatingEdit, &M::ageRating }
-    };
-    for (const auto &[edit, field] : lines)
-        set(field, edit->text());
-
-    const std::initializer_list<std::pair<YACReaderFieldPlainTextEdit *, QVariant M::*>> plains = {
-        { writer, &M::writer }, { penciller, &M::penciller }, { inker, &M::inker }, { colorist, &M::colorist }, { letterer, &M::letterer }, { coverArtist, &M::coverArtist }, { editor, &M::editor }, { imprint, &M::imprint }
-    };
-    for (const auto &[edit, field] : plains) {
-        if (edit->toPlainText() != YACReaderFieldPlainTextEdit::tr("Click to overwrite"))
-            set(field, edit->toPlainText());
-    }
-
-    if (colorCheck->checkState() != Qt::PartiallyChecked)
-        patch.set(&M::color, colorCheck->isChecked());
-
-    if (!trackingOneIssue)
-        return patch;
-    for (const auto &[edit, field] : std::initializer_list<std::pair<YACReaderFieldEdit *, QVariant M::*>> {
-                 { title, &M::title }, { arcNumberEdit, &M::arcNumber }, { alternateNumberEdit, &M::alternateNumber }, { mainCharacterOrTeamEdit, &M::mainCharacterOrTeam } })
-        set(field, edit->text());
-    for (const auto &[edit, field] : std::initializer_list<std::pair<YACReaderFieldPlainTextEdit *, QVariant M::*>> {
-                 { synopsis, &M::synopsis }, { characters, &M::characters }, { teams, &M::teams }, { locations, &M::locations }, { review, &M::review }, { notes, &M::notes }, { tags, &M::tags } }) {
-        if (edit->toPlainText() != YACReaderFieldPlainTextEdit::tr("Click to overwrite"))
-            set(field, edit->toPlainText());
-    }
-    if (const auto date = editedDate(DescriptiveComicMetadata()))
-        patch.set(&M::date, *date);
-    return patch;
-}
-
-bool PropertiesDialog::trackIssues()
-{
-    const auto issues = parseTrackedIssues(issuesEdit->text());
-    std::optional<QString> coverKey;
-    if (trackingOneIssue && !customCover.isNull())
-        coverKey = savePlaceholderCover(databasePath, customCover);
-    std::optional<int> tracked;
-    QString connectionName = "";
-    {
-        QSqlDatabase db = DataBaseManagement::loadDatabase(databasePath);
-        const auto patch = trackedMetadata();
-        tracked = std::visit(overloaded {
-                                     [&](FolderId folderId) { return trackIssuesInFolder(folderId, issues.numbers, patch, coverKey, db); },
-                                     [&](ReadingListId readingListId) { return trackIssuesInReadingList(readingListId, issues.numbers, patch, coverKey, db); },
-                             },
-                             *trackedIn);
-        connectionName = db.connectionName();
-    }
-    QSqlDatabase::removeDatabase(connectionName);
-    if (coverKey && tracked.value_or(0) == 0)
-        DBHelper::removePlaceholderCovers(databasePath, { *coverKey });
-
-    if (!tracked) {
-        QMessageBox::warning(this, tr("Issues not tracked"), tr("The missing issues could not be tracked."));
-        return false;
-    }
-    updated = updated || *tracked > 0;
-    return true;
 }
 
 bool PropertiesDialog::setComicsForSequentialEditing(int currentComicIndex, QList<ComicRecord> records)
@@ -1032,8 +331,6 @@ bool PropertiesDialog::setComicsForSequentialEditing(int currentComicIndex, QLis
     return showRecord(currentComicIndex, 1);
 }
 
-// loads the record again, so a repeated comic shows the values saved at its first occurrence and changes made
-// elsewhere are seen; a record that no longer exists is skipped in the direction of `step`
 bool PropertiesDialog::showRecord(int index, int step)
 {
     for (; index >= 0 && index < records.length(); index += step) {
@@ -1059,104 +356,11 @@ bool PropertiesDialog::showRecord(int index, int step)
     return false;
 }
 
-// a cleared field is NULL; the values that only one comic can have are only edited in sequential editing
 DescriptiveMetadataPatch PropertiesDialog::editedMetadata() const
 {
-    if (!trackedIn)
-        return metadataEditor->editedMetadata();
-    using M = DescriptiveComicMetadata;
-    DescriptiveMetadataPatch patch;
-
-    const auto value = [](const QString &text) { return text.isEmpty() ? QVariant() : QVariant(text); };
-    const auto line = [&](YACReaderFieldEdit *edit, QVariant M::*field) {
-        if (edit->isModified())
-            patch.set(field, value(edit->text()));
-    };
-    const auto plain = [&](YACReaderFieldPlainTextEdit *edit, QVariant M::*field) {
-        if (edit->document()->isModified())
-            patch.set(field, value(edit->toPlainText()));
-    };
-
-    line(series, &M::series);
-    line(title, &M::title);
-    if (sequentialEditing) {
-        line(numberEdit, &M::number);
-        line(arcNumberEdit, &M::arcNumber);
-        line(alternateNumberEdit, &M::alternateNumber);
-    }
-    line(countEdit, &M::count);
-    line(volumeEdit, &M::volume);
-    line(storyArcEdit, &M::storyArc);
-    line(arcCountEdit, &M::arcCount);
-    line(alternateSeriesEdit, &M::alternateSeries);
-    line(alternateCountEdit, &M::alternateCount);
-    line(genereEdit, &M::genere);
-
-    plain(writer, &M::writer);
-    plain(penciller, &M::penciller);
-    plain(inker, &M::inker);
-    plain(colorist, &M::colorist);
-    plain(letterer, &M::letterer);
-    plain(coverArtist, &M::coverArtist);
-    plain(editor, &M::editor);
-    plain(imprint, &M::imprint);
-
-    line(publisherEdit, &M::publisher);
-    line(formatEdit, &M::format);
-    if (colorCheck->checkState() != Qt::PartiallyChecked && colorCheck->checkState() != loadedColorState)
-        patch.set(&M::color, colorCheck->isChecked());
-
-    line(languageEdit, &M::languageISO);
-    line(ageRatingEdit, &M::ageRating);
-
-    plain(synopsis, &M::synopsis);
-    plain(characters, &M::characters);
-    plain(locations, &M::locations);
-    plain(teams, &M::teams);
-    line(mainCharacterOrTeamEdit, &M::mainCharacterOrTeam);
-    line(seriesGroupEdit, &M::seriesGroup);
-
-    plain(review, &M::review);
-    plain(notes, &M::notes);
-    plain(tags, &M::tags);
-
-    return patch;
+    return metadataEditor->editedMetadata();
 }
 
-// the changed parts of the date, with the other parts of `info`
-std::optional<QVariant> PropertiesDialog::editedDate(const DescriptiveComicMetadata &info) const
-{
-    if (!trackedIn)
-        return std::nullopt;
-    if (!dayEdit->isModified() && !monthEdit->isModified() && !yearEdit->isModified())
-        return std::nullopt;
-
-    auto parts = info.date.toString().split("/");
-    if (parts.length() != 3)
-        parts = { QString(), QString(), QString() };
-    if (dayEdit->isModified())
-        parts[0] = dayEdit->text();
-    if (monthEdit->isModified())
-        parts[1] = monthEdit->text();
-    if (yearEdit->isModified())
-        parts[2] = yearEdit->text();
-
-    const auto date = parts.join("/");
-    return date == "//" ? QVariant() : QVariant(date);
-}
-
-std::optional<YACReader::FileType> PropertiesDialog::editedType() const
-{
-    if (!trackedIn)
-        return std::nullopt;
-    const auto index = typeCombo->currentIndex();
-    if (index == -1 || index == loadedTypeIndex)
-        return std::nullopt;
-    return static_cast<YACReader::FileType>(index);
-}
-
-// writes the new cover into `staged` and sets the cover columns of the record; false when the change does not apply
-// to it (a cover page or a reset needs the file) or the file could not be written
 bool PropertiesDialog::applyCoverChange(ComicRecord &record, StagedCover &staged)
 {
     auto &info = *recordInfo(record);
@@ -1199,7 +403,6 @@ bool PropertiesDialog::applyCoverChange(ComicRecord &record, StagedCover &staged
 bool PropertiesDialog::updateComics()
 {
     const auto metadata = editedMetadata();
-    const auto type = editedType();
     const int begin = sequentialEditing ? currentComicIndex : 0;
     const int end = sequentialEditing ? currentComicIndex + 1 : records.length();
 
@@ -1261,8 +464,6 @@ bool PropertiesDialog::updateComics()
                     writtenPlaceholders.insert(placeholder.id);
 
                     auto patch = metadata;
-                    if (const auto date = editedDate(placeholder))
-                        patch.set(&DescriptiveComicMetadata::date, *date);
                     if (!patch.isEmpty()) {
                         written = DBHelper::updatePlaceholderMetadata(placeholder.id, patch, db) && written;
                         patch.applyTo(placeholder);
@@ -1290,19 +491,10 @@ bool PropertiesDialog::updateComics()
                 writtenIds.insert(info.id);
 
                 auto patch = metadata;
-                if (const auto date = editedDate(info))
-                    patch.set(&DescriptiveComicMetadata::date, *date);
 
                 if (!patch.isEmpty()) {
                     written = DBHelper::updateComicInfoMetadata(info.id, patch, db) && written;
                     patch.applyTo(info);
-                    info.edited = true;
-                    wrote = true;
-                }
-
-                if (type && info.type.toInt() != static_cast<int>(*type)) {
-                    written = DBHelper::updateComicInfoType(info.id, *type, db) && written;
-                    info.type = QVariant::fromValue(*type);
                     info.edited = true;
                     wrote = true;
                 }
@@ -1403,22 +595,6 @@ void PropertiesDialog::setCover(const QPixmap &coverI)
     cover->setPixmap(coverI);
 }
 
-void PropertiesDialog::setFilename(const QString &nameString)
-{
-    title->setText(nameString);
-}
-
-void PropertiesDialog::setNumpages(int pagesNum)
-{
-    numPagesEdit->setText(QString::number(pagesNum));
-}
-
-void PropertiesDialog::setSize(float sizeFloat)
-{
-    size->setText(QString::number(sizeFloat, 'f', 2) + " MB");
-}
-
-// a refused save shows its message, and the user can still move on
 void PropertiesDialog::saveAndOpenPrevious()
 {
     updateComics();
@@ -1445,94 +621,21 @@ void PropertiesDialog::saveAndOpenNext()
 
 void PropertiesDialog::saveAndClose()
 {
-    if (!(trackedIn ? trackIssues() : updateComics()))
+    if (!updateComics())
         return;
 
     close();
 }
 
-void PropertiesDialog::setDisableUniqueValues(bool disabled)
-{
-    coverPageEdit->setDisabled(disabled);
-    coverPageEdit->clear();
-    numberEdit->setDisabled(disabled);
-    numberEdit->clear();
-    arcNumberEdit->setDisabled(disabled);
-    arcNumberEdit->clear();
-    alternateNumberEdit->setDisabled(disabled);
-    alternateNumberEdit->clear();
-}
-
-// every way of closing the dialog (Close, Save, Escape, the window button) comes here
 void PropertiesDialog::done(int result)
 {
-    if (trackedIn) {
-        trackedIn.reset();
-        trackedFolderNumberKeys.clear();
-        issuesEdit->clear();
-        issuesSummary->clear();
-        setTrackMode(false);
-    }
-    title->clear();
-    title->setModified(false);
-    coverPageEdit->clear();
-    numberEdit->clear();
-    countEdit->clear();
-    volumeEdit->clear();
-    storyArcEdit->clear();
-    arcNumberEdit->clear();
-    arcCountEdit->clear();
-    genereEdit->clear();
-    writer->clear();
-    penciller->clear();
-    inker->clear();
-    colorist->clear();
-    letterer->clear();
-    coverArtist->clear();
-    dayEdit->clear();
-    monthEdit->clear();
-    yearEdit->clear();
-    publisherEdit->clear();
-    formatEdit->clear();
-    colorCheck->setCheckState(Qt::PartiallyChecked);
-    ageRatingEdit->clear();
-    synopsis->clear();
-    characters->clear();
-    notes->clear();
-
-    // 9.13 fields
-    typeCombo->setCurrentIndex(-1);
-    editor->clear();
-    imprint->clear();
-    teams->clear();
-    locations->clear();
-    series->clear();
-    alternateSeriesEdit->clear();
-    alternateNumberEdit->clear();
-    alternateCountEdit->clear();
-    languageEdit->clear();
-    seriesGroupEdit->clear();
-    mainCharacterOrTeamEdit->clear();
-    review->clear();
-    tags->clear();
-
-    setDisableUniqueValues(false);
-
-    tabBar->setCurrentIndex(0);
-
-    coverPageEdit->setFocus();
-
-    // the comics saved before (sequential editing) need a refresh of the views
     if (updated && result != QDialog::Accepted)
         emit accepted();
     updated = false;
-
+    coverChanged = false;
+    customCover = QImage();
+    metadataEditor->setFileName(QString());
     QDialog::done(result);
-}
-
-void PropertiesDialog::paintEvent(QPaintEvent *event)
-{
-    QDialog::paintEvent(event);
 }
 
 void PropertiesDialog::updateCoverPageNumberLabel(int n)
@@ -1618,14 +721,6 @@ void PropertiesDialog::loadCustomCoverImageFromPath(const QString &path)
     const QImage image(path);
     if (image.isNull()) {
         QMessageBox::warning(this, tr("Invalid cover"), tr("The image is invalid."));
-        return;
-    }
-
-    if (trackedIn) {
-        if (!trackingOneIssue)
-            return;
-        customCover = image;
-        setCover(QPixmap::fromImage(customCover.convertToFormat(QImage::Format_Grayscale8)));
         return;
     }
 

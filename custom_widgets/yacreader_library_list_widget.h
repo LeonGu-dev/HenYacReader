@@ -14,6 +14,7 @@ public:
 
 signals:
     void currentIndexChanged(QString text);
+    void currentLibraryActivated();
 
 public slots:
     QString currentText();

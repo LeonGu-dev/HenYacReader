@@ -38,7 +38,8 @@ else {
     Write-Host "Running using $versionOutput"
 }
 
-$files = @(git ls-files --cached --modified --others --exclude-standard --deduplicate -- "*.h" "*.cpp" "*.c" "*.mm" "*.m")
+$files = @(git ls-files --cached --modified --others --exclude-standard --deduplicate -- "*.h" "*.cpp" "*.c" "*.mm" "*.m" |
+    Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
 
 if ($files.Count -gt 0) {
     $batchSize = 100

@@ -69,8 +69,6 @@ public slots:
     void openComic(const ComicDB &comic, ComicModel::Mode mode);
     void openContainingFolderOfCurrentComic();
     void showComicVineScraper();
-    void trackMissingIssues(qulonglong folderId);
-    void trackMissingIssuesInReadingList(qulonglong readingListId);
     void showProperties();
     void setSelectedComicsRead();
     void setSelectedComicsUnread();

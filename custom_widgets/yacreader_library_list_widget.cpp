@@ -81,8 +81,11 @@ void YACReaderLibraryListWidget::mousePressEvent(QMouseEvent *event)
             child = child->parentWidget();
         }
         int item = librariesList.indexOf(qobject_cast<YACReaderLibraryItemWidget *>(child));
-        if (item != -1 && item != currentLibraryIndex) {
-            setCurrentIndex(item);
+        if (item != -1) {
+            if (item != currentLibraryIndex)
+                setCurrentIndex(item);
+            else if (event->button() == Qt::LeftButton)
+                emit currentLibraryActivated();
         }
     }
 }

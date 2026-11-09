@@ -2,7 +2,8 @@ param(
     [ValidateSet('Configure', 'Build', 'Test', 'Deploy', 'All')]
     [string]$Step = 'All',
     [string[]]$Target = @(),
-    [string]$OutputDirectory = 'artifacts\baseline'
+    [string]$OutputDirectory = 'artifacts\baseline',
+    [switch]$ReleasePayload
 )
 
 $ErrorActionPreference = 'Stop'
@@ -91,10 +92,12 @@ if ($Step -in 'Deploy', 'All') {
     foreach ($appName in 'YACReader', 'YACReaderLibrary', 'YACReaderLibraryServer') {
         Copy-Item -LiteralPath "$buildRoot\bin\$appName.exe" -Destination $deployRoot -Force
     }
-    Invoke-Logged "$qtRoot\bin\windeployqt.exe" @(
+    $deployArguments = @(
         '--release', '--compiler-runtime', '--qmldir', "$sourceRoot\YACReaderLibrary\qml",
         "$deployRoot\YACReader.exe", "$deployRoot\YACReaderLibrary.exe", "$deployRoot\YACReaderLibraryServer.exe"
-    ) 'deploy.log'
+    )
+    if ($ReleasePayload) { $deployArguments += @('--skip-plugin-types', 'qmltooling') }
+    Invoke-Logged "$qtRoot\bin\windeployqt.exe" $deployArguments 'deploy.log'
     New-Item -ItemType Directory -Force -Path "$deployRoot\utils", "$deployRoot\openssl", "$deployRoot\languages" | Out-Null
     Copy-Item -LiteralPath "$sourceRoot\dependencies\7zip\win\x64\7z.dll" -Destination "$deployRoot\utils" -Force
     Copy-Item -LiteralPath "$sourceRoot\dependencies\pdfium\win\x64\pdfium.dll" -Destination $deployRoot -Force

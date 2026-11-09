@@ -1,0 +1,69 @@
+[
+  {
+    "source": "YACReaderLibrary/properties_dialog.cpp",
+    "archive": "legacy/reference/before-ui-isolation/YACReaderLibrary/properties_dialog.cpp",
+    "sha256": "8209a8c9e2e83f5c81bfe374c5142277cf303aee186b97a31dd941b102c4f128"
+  },
+  {
+    "source": "YACReaderLibrary/properties_dialog.h",
+    "archive": "legacy/reference/before-ui-isolation/YACReaderLibrary/properties_dialog.h",
+    "sha256": "db05bf99a3157f0faefa8c4a6cb04b7a704dde49e8b17677c4eb3065c92e189e"
+  },
+  {
+    "source": "YACReaderLibrary/comic_management_coordinator.cpp",
+    "archive": "legacy/reference/before-ui-isolation/YACReaderLibrary/comic_management_coordinator.cpp",
+    "sha256": "e643d8fc2efb6359ea7585eaffc29077459350efe84537bd7d5f774473f341f3"
+  },
+  {
+    "source": "YACReaderLibrary/comic_management_coordinator.h",
+    "archive": "legacy/reference/before-ui-isolation/YACReaderLibrary/comic_management_coordinator.h",
+    "sha256": "4d04a46c83feb7987f7ab67392fe52db8ad9504d17e485a00c159425a77615ab"
+  },
+  {
+    "source": "YACReaderLibrary/library_window_menus.cpp",
+    "archive": "legacy/reference/before-ui-isolation/YACReaderLibrary/library_window_menus.cpp",
+    "sha256": "f98f1c86b6185de31d0660febdee27e9b97ed21f32b2a92a32868bce74a82532"
+  },
+  {
+    "source": "YACReaderLibrary/library_window.cpp",
+    "archive": "legacy/reference/before-ui-isolation/YACReaderLibrary/library_window.cpp",
+    "sha256": "e5c08eee9313b923ce1df87b94a34f5847f7f40dbec9f7a589d02b3b8a200572"
+  },
+  {
+    "source": "YACReaderLibrary/properties_dialog.cpp",
+    "revision": "118213b9ad951cbe9391381877046935c4076a18",
+    "archive": "legacy/reference/upstream-118213b/YACReaderLibrary/properties_dialog.cpp",
+    "sha256": "d60a512d923febf8846e0577e3b24784079b3e3705fdf212f0fa23c46dd35970"
+  },
+  {
+    "source": "YACReaderLibrary/properties_dialog.h",
+    "revision": "118213b9ad951cbe9391381877046935c4076a18",
+    "archive": "legacy/reference/upstream-118213b/YACReaderLibrary/properties_dialog.h",
+    "sha256": "020bc649ed64a17a4a7be72859eb22774ac9c404755e92caf7a62f4b400d1d3d"
+  },
+  {
+    "source": "custom_widgets/yacreader_field_edit.h",
+    "archive": "legacy/reference/before-ui-isolation/custom_widgets/yacreader_field_edit.h",
+    "sha256": "9ae73ddbe7db82f0a14cde8091f70a8efcbb99aff6030bdaf615944d0d4445bf"
+  },
+  {
+    "source": "custom_widgets/yacreader_field_edit.cpp",
+    "archive": "legacy/reference/before-ui-isolation/custom_widgets/yacreader_field_edit.cpp",
+    "sha256": "56afe95544e983da5bf3fbf3f01a81edf915e52301a67d492f40f9fa1e7d3e1b"
+  },
+  {
+    "source": "custom_widgets/yacreader_field_plain_text_edit.h",
+    "archive": "legacy/reference/before-ui-isolation/custom_widgets/yacreader_field_plain_text_edit.h",
+    "sha256": "3041375abd1adebb1c3872fafa343733010853156cac126213fe52febcd60f4c"
+  },
+  {
+    "source": "custom_widgets/yacreader_field_plain_text_edit.cpp",
+    "archive": "legacy/reference/before-ui-isolation/custom_widgets/yacreader_field_plain_text_edit.cpp",
+    "sha256": "fe92553ffc0c6b9e6aa6c603e48890883c1a4b8ed64e96cf3e31c097eab4a630"
+  },
+  {
+    "source": "custom_widgets/CMakeLists.txt",
+    "archive": "legacy/reference/before-ui-isolation/custom_widgets/CMakeLists.txt",
+    "sha256": "52509e9de35b6034d7e12c02271812348238e623a28c3d252f22d5df5f6e5d7a"
+  }
+]

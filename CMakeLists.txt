@@ -193,6 +193,9 @@ if(BUILD_TESTS AND NOT BUILD_SERVER_STANDALONE)
     add_subdirectory(tests)
 endif()
 
+include(cmake/ReferenceIsolation.cmake)
+yacreader_check_reference_isolation("${CMAKE_SOURCE_DIR}")
+
 # Summary
 if(CMAKE_CONFIGURATION_TYPES)
     string(JOIN ", " _configured_build_types ${CMAKE_CONFIGURATION_TYPES})
