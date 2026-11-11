@@ -221,15 +221,6 @@ QWidget *OptionsDialog::createGeneralTab()
     trayLayout->addWidget(startToTrayCheckbox);
     trayIconBox->setLayout(trayLayout);
 
-    auto apiKeyLayout = new QVBoxLayout();
-    auto apiKeyButton = new QPushButton(tr("Edit Comic Vine API key"));
-    apiKeyLayout->addWidget(apiKeyButton);
-
-    auto apiKeyBox = new QGroupBox(tr("Comic Vine API key"));
-    apiKeyBox->setLayout(apiKeyLayout);
-
-    connect(apiKeyButton, &QAbstractButton::clicked, this, &OptionsDialog::editApiKey);
-
     auto comicInfoXMLBox = new QGroupBox(tr("ComicInfo.xml legacy support"));
 
     comicInfoXMLCheckbox = new QCheckBox(tr("Import metadata from ComicInfo.xml when adding new comics"));
@@ -268,7 +259,6 @@ QWidget *OptionsDialog::createGeneralTab()
     generalLayout->addWidget(languageBox);
     generalLayout->addWidget(windowBox);
     generalLayout->addWidget(trayIconBox);
-    generalLayout->addWidget(apiKeyBox);
     generalLayout->addWidget(comicInfoXMLBox);
     generalLayout->addWidget(recentlyAddedBox);
     generalLayout->addWidget(thirdPartyReaderBox);

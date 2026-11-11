@@ -1,4 +1,8 @@
 qt_add_executable(properties_dialog_test
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_picker.cpp
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_picker.h
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_chip_colors.cpp
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_chip_colors.h
     main.cpp
     ${PROJECT_SOURCE_DIR}/YACReaderLibrary/properties_dialog.cpp
     ${PROJECT_SOURCE_DIR}/YACReaderLibrary/properties_dialog.h

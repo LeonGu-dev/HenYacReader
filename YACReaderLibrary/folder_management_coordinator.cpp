@@ -2,6 +2,7 @@
 
 #include "comics_remover.h"
 #include "cover_utils.h"
+#include "folder_delete_confirmation.h"
 #include "folder_model.h"
 #include "yacreader_global.h"
 #include "yacreader_global_gui.h"
@@ -193,7 +194,7 @@ void FolderManagementCoordinator::renameFolder(const QModelIndex &folder, const 
 
 void FolderManagementCoordinator::deleteCurrentFolder()
 {
-    const auto folder = selectedFolderProvider();
+    const QPersistentModelIndex folder = selectedFolderProvider();
     if (!folder.isValid()) {
         QMessageBox::information(dialogParent,
                                  QCoreApplication::translate("LibraryWindow", "No folder selected"),
@@ -211,13 +212,11 @@ void FolderManagementCoordinator::deleteCurrentFolder()
         return;
     }
 
-    const auto result = QMessageBox::question(
-            dialogParent,
-            QCoreApplication::translate("LibraryWindow", "Delete folder"),
-            QCoreApplication::translate("LibraryWindow", "The selected folder and all its contents will be deleted from your disk. Are you sure?") + "\n\nFolder : " + folderPath,
-            QMessageBox::Yes,
-            QMessageBox::No);
-    if (result != QMessageBox::Yes)
+    if (!FolderDeleteConfirmation::confirm(dialogParent, folderPath))
+        return;
+    // A modal dialog continues processing library/model events. Never delete
+    // a stale selection if the library or folder changed during confirmation.
+    if (!folder.isValid() || QDir::cleanPath(libraryPathProvider()) != libraryPath || foldersModel->getFolderPath(folder) != relativePath)
         return;
 
     emit folderAboutToBeDeleted(folder.parent());

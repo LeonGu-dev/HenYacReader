@@ -194,6 +194,7 @@ private:
     std::optional<ContentViewState> pendingViewState;
     QMetaObject::Connection modelDataChangedConnection;
     QMetaObject::Connection modelFavoritesChangedConnection;
+    QMetaObject::Connection modelLayoutChangedConnection;
 
     ComicDB currentComic;
     ComicInfoObject *currentComicInfo = nullptr;

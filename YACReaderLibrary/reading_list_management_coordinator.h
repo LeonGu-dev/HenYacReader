@@ -32,6 +32,8 @@ public:
 
 public slots:
     void addReadingList();
+    void saveFilterAsSmartList();
+    void saveFilterAsReadingList();
     void importReadingLists();
     void deleteCurrentList();
     void addLabel();
@@ -69,6 +71,7 @@ private:
 
     QWidget *dialogParent;
     ReadingListModel *listsModel;
+    ComicModel *comicsModel;
     CurrentListProvider currentListProvider;
     LibraryPathProvider libraryPathProvider;
     QSettings *settings;

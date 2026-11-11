@@ -83,6 +83,12 @@ class ComicInfoObject : public QObject
     // false for a placeholder, which has no read state or rating
     Q_PROPERTY(bool canSetReadState READ canSetReadState CONSTANT)
 
+    // Data-driven detail view; QML does not need a new property/delegate per field.
+    Q_PROPERTY(QVariantMap metadata READ metadata CONSTANT)
+    Q_PROPERTY(QVariantList detailRows READ detailRows CONSTANT)
+    Q_PROPERTY(QStringList statusBadges READ statusBadges CONSTANT)
+    Q_PROPERTY(QVariantMap fileDetails READ fileDetails CONSTANT)
+
 public:
     explicit ComicInfoObject(QObject *parent = nullptr);
     ComicInfoObject(const ComicRecord &record, bool isFavorite, QObject *parent = nullptr);
@@ -154,6 +160,10 @@ public:
     bool isFavorite() const;
     bool available() const;
     bool canSetReadState() const;
+    QVariantMap metadata() const;
+    QVariantList detailRows() const;
+    QStringList statusBadges() const;
+    QVariantMap fileDetails() const;
 
     void setRead(bool read);
     void setRating(int rating);

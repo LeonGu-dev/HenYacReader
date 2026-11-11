@@ -150,8 +150,7 @@ struct SidebarTheme {
     QColor backgroundColor;
     QColor separatorColor;
     QColor sectionSeparatorColor; // Horizontal separators between sidebar sections
-    QString splitterQSS = "QSplitter::handle { image: none; background-color: transparent; }"
-                          "QSplitter::handle:vertical { height: 39px; }";
+    QString splitterQSS = "QSplitter::handle { image: none; background-color: transparent; }";
 
     // When true, section title strings are uppercased after translation
     bool uppercaseLabels;

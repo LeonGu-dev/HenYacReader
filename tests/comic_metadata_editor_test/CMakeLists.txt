@@ -1,4 +1,8 @@
 qt_add_executable(comic_metadata_editor_test
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_picker.cpp
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_picker.h
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_chip_colors.cpp
+    ${PROJECT_SOURCE_DIR}/custom_widgets/metadata_chip_colors.h
     main.cpp
     ${PROJECT_SOURCE_DIR}/YACReaderLibrary/comic_filename.cpp
     ${PROJECT_SOURCE_DIR}/YACReaderLibrary/staged_comic_rename.cpp
@@ -9,7 +13,7 @@ qt_add_executable(comic_metadata_editor_test
 )
 yacreader_apply_build_options(comic_metadata_editor_test)
 target_compile_options(comic_metadata_editor_test PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
-target_include_directories(comic_metadata_editor_test PRIVATE ${PROJECT_SOURCE_DIR}/YACReaderLibrary ${PROJECT_SOURCE_DIR}/custom_widgets)
+target_include_directories(comic_metadata_editor_test PRIVATE ${PROJECT_SOURCE_DIR}/YACReaderLibrary ${PROJECT_SOURCE_DIR}/YACReaderLibrary/db ${PROJECT_SOURCE_DIR}/custom_widgets)
 target_link_libraries(comic_metadata_editor_test PRIVATE Qt6::Widgets Qt6::Test common_all common_gui)
 add_test(NAME comic_metadata_editor_test COMMAND comic_metadata_editor_test)
 set_tests_properties(comic_metadata_editor_test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

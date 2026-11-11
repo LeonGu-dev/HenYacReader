@@ -1620,6 +1620,8 @@ bool DataBaseManagement::updateToCurrentVersion(const QString &libraryPath, bool
     const bool pre10_5 = compareVersions(oldVersion, "10.5.0") < 0;
     const bool prePersonalMetadata = compareVersions(oldVersion, "10.5.1") < 0;
     const bool preFavoriteMetadata = compareVersions(oldVersion, "10.5.2") < 0;
+    const bool preSeriesName = compareVersions(oldVersion, "10.5.5") < 0;
+    const bool preConvention = compareVersions(oldVersion, "10.5.4") < 0;
     const bool prePublicationType = compareVersions(oldVersion, "10.5.3") < 0;
 
     QString connectionName = "";
@@ -1874,6 +1876,17 @@ bool DataBaseManagement::updateToCurrentVersion(const QString &libraryPath, bool
                             returnValue = addColumns(table, { "publicationType TEXT" }, db) && returnValue;
                 }
 
+                if (preConvention && returnValue) {
+                    for (const auto &table : { QString("comic_info"), QString("placeholder") }) {
+                        if (db.record(table).indexOf("convention") < 0)
+                            returnValue = addColumns(table, { "convention TEXT" }, db) && returnValue;
+                    }
+                }
+                if (preSeriesName && returnValue) {
+                    for (const auto &table : { QString("comic_info"), QString("placeholder") })
+                        if (db.record(table).indexOf("seriesName") < 0)
+                            returnValue = addColumns(table, { "seriesName TEXT" }, db) && returnValue;
+                }
                 if (returnValue) {
                     QSqlQuery updateVersion(db);
                     updateVersion.prepare("UPDATE db_info SET "

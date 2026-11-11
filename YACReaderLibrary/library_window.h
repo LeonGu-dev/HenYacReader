@@ -17,6 +17,7 @@
 class QTreeView;
 class QDirModel;
 class QAction;
+class QShortcut;
 class QMenu;
 class QToolBar;
 class QComboBox;
@@ -224,6 +225,7 @@ public slots:
     bool eventFilter(QObject *object, QEvent *event) override;
 
 private:
+    QShortcut *exitFullscreenShortcut = nullptr;
     bool startsHiddenInTray() const;
 
     void applyLoadedLibrary(const QString &libraryDataPath, bool readOnly);

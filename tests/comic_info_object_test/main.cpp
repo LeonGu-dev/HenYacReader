@@ -24,6 +24,8 @@ private slots:
     void readsTheComic();
     void readsADeletedComic();
     void readsAPlaceholder();
+    void compactDetailsUsePersonalMetadata();
+    void compactDetailsHandleMissingValues();
     void writablePropertiesNotifyOnce_data();
     void writablePropertiesNotifyOnce();
     void streamKeepsTheExistOnDbSlot_data();
@@ -69,7 +71,7 @@ void ComicInfoObjectTest::exposesTheQmlProperties()
         "editor", "imprint", "teams", "locations", "series", "alternateSeries", "alternateNumber", "alternateCount",
         "languageISO", "seriesGroup", "mainCharacterOrTeam", "review", "tags",
         "imageFiltersJson", "lastTimeImageFiltersSet", "lastTimeCoverSet", "usesExternalCover", "lastTimeMetadataSet",
-        "isFavorite", "available", "canSetReadState"
+        "isFavorite", "available", "canSetReadState", "metadata", "detailRows", "statusBadges", "fileDetails"
     };
 
     const auto *metaObject = &ComicInfoObject::staticMetaObject;
@@ -169,6 +171,65 @@ void ComicInfoObjectTest::readsAPlaceholder()
 
     ComicInfoObject comic(ComicRecordCase::Comic { sampleComic() }, false);
     QCOMPARE(comic.property("canSetReadState").toBool(), true);
+}
+
+void ComicInfoObjectTest::compactDetailsUsePersonalMetadata()
+{
+    auto comic = sampleComic();
+    comic.info.translatedTitle = "Translated title";
+    comic.info.circle = "Circle";
+    comic.info.convention = "C107";
+    comic.info.work = "Work";
+    comic.info.characters = "Character A\nCharacter B";
+    comic.info.tags = "11234\nEnglish-tag\nlong tag";
+    comic.info.isAnthology = true;
+    comic.info.translator = "Translator";
+    comic.info.publicationType = "doujinshi";
+    comic.info.color = false;
+    comic.info.censorship = "uncensored";
+    comic.info.translationStatus = "translated";
+    comic.info.numPages = 126;
+    ComicInfoObject object(ComicRecordCase::Comic { comic }, false);
+    QCOMPARE(object.metadata().value("translatedTitle").toString(), QString("Translated title"));
+    QCOMPARE(object.metadata().size(), int(DescriptiveComicMetadata::columns().size()));
+    const auto rows = object.detailRows();
+    QCOMPARE(rows.size(), 7);
+    QCOMPARE(rows[0].toMap().value("values").toStringList(), QStringList({ "Writer A", "Writer B" }));
+    QVERIFY(!rows[0].toMap().value("note").toString().isEmpty());
+    QCOMPARE(rows[2].toMap().value("key").toString(), QString("convention"));
+    QCOMPARE(rows[2].toMap().value("chipField").toString(), QString("convention"));
+    QCOMPARE(rows[5].toMap().value("values").toStringList(), QStringList({ "11234", "English-tag", "long tag" }));
+    QCOMPARE(object.statusBadges(), QStringList({ "Doujinshi", "Black and white", "Uncensored", "Chinese translation" }));
+    QCOMPARE(object.fileDetails().value("name").toString(), QString("Issue 1.cbz"));
+    QCOMPARE(object.fileDetails().value("pages").toInt(), 126);
+
+    ComicInfoObject deleted(ComicRecordCase::DeletedComic { comic.info, LastKnownFile { "Issue 1.cbz", "/old/Issue 1.cbz" } }, false);
+    QCOMPARE(deleted.detailRows(), rows);
+    QCOMPARE(deleted.statusBadges(), object.statusBadges());
+    QCOMPARE(deleted.fileDetails().value("path").toString(), QString("/old/Issue 1.cbz"));
+
+    Placeholder placeholder;
+    static_cast<DescriptiveComicMetadata &>(placeholder) = comic.info;
+    ComicInfoObject missing(ComicRecordCase::Placeholder { placeholder }, false);
+    QCOMPARE(missing.detailRows(), rows);
+    QCOMPARE(missing.statusBadges(), object.statusBadges());
+    QVERIFY(missing.fileDetails().value("path").toString().isEmpty());
+}
+
+void ComicInfoObjectTest::compactDetailsHandleMissingValues()
+{
+    ComicDB comic;
+    comic.info.writer = " \n\n";
+    comic.info.tags = "\n ";
+    comic.info.publicationType = "unknown-future-value";
+    ComicInfoObject object(ComicRecordCase::Comic { comic }, false);
+    QVERIFY(object.detailRows().isEmpty());
+    QVERIFY(object.statusBadges().isEmpty());
+    QVERIFY(object.fileDetails().value("size").toString().isEmpty());
+    // NULL color remains unset; an explicit false must display black and white.
+    comic.info.color = false;
+    ComicInfoObject blackAndWhite(ComicRecordCase::Comic { comic }, false);
+    QCOMPARE(blackAndWhite.statusBadges(), QStringList({ "Black and white" }));
 }
 
 void ComicInfoObjectTest::writablePropertiesNotifyOnce_data()

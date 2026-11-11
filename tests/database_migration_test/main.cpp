@@ -14,6 +14,8 @@ class DatabaseMigrationTest : public QObject
 {
     Q_OBJECT
 private slots:
+    void addsConventionToComicsAndPlaceholders();
+    void addsPersonalSeriesWithoutChangingLegacySeries();
     void migratesReadingListsAndLabels();
     void failedMigrationRollsBack();
     void failedOlderUpgradeRollsBack();
@@ -115,6 +117,8 @@ bool DatabaseMigrationTest::createHistoricalLibrary(const QString &libraryPath, 
             { "10.5.1", { "translatedTitle", "circle", "work", "isAnthology", "censorship", "translationStatus", "translator" } },
             { "10.5.2", { "favorite" } },
             { "10.5.3", { "publicationType" } },
+            { "10.5.4", { "convention" } },
+            { "10.5.5", { "seriesName" } },
         };
         for (const auto &[introduced, columns] : comicColumns) {
             if (DataBaseManagement::compareVersions(version, introduced) < 0) {
@@ -407,6 +411,50 @@ void DatabaseMigrationTest::addsPublicationTypeWithoutChangingFavorites()
     QCOMPARE(ints(library.path(), "SELECT favorite FROM comic_info WHERE id=1"), QList<int>({ 1 }));
     QCOMPARE(strings(library.path(), "SELECT title FROM comic_info WHERE id=1"), QStringList({ "Keep title" }));
     QCOMPARE(ints(library.path(), "SELECT publicationType IS NULL FROM comic_info WHERE id=1"), QList<int>({ 1 }));
+}
+
+void DatabaseMigrationTest::addsConventionToComicsAndPlaceholders()
+{
+    QTemporaryDir library;
+    QVERIFY(QDir().mkpath(LibraryPaths::libraryDataPath(library.path())));
+    QString connection;
+    {
+        auto db = DataBaseManagement::createDatabase(LibraryPaths::libraryDatabasePath(library.path()));
+        connection = db.connectionName();
+        QSqlQuery query(db);
+        QVERIFY(query.exec("INSERT INTO comic_info(id,hash,title,favorite,publicationType) VALUES(1,'keep','Keep title',1,'doujinshi')"));
+        QVERIFY(query.exec("ALTER TABLE comic_info DROP COLUMN convention"));
+        QVERIFY(query.exec("ALTER TABLE placeholder DROP COLUMN convention"));
+        QVERIFY(query.exec("UPDATE db_info SET version='10.5.3'"));
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QVERIFY(DataBaseManagement::updateToCurrentVersion(library.path(), true));
+    QCOMPARE(ints(library.path(), "SELECT favorite FROM comic_info WHERE id=1"), QList<int>({ 1 }));
+    QCOMPARE(strings(library.path(), "SELECT title || ':' || publicationType FROM comic_info WHERE id=1"), QStringList({ "Keep title:doujinshi" }));
+    QCOMPARE(ints(library.path(), "SELECT convention IS NULL FROM comic_info WHERE id=1"), QList<int>({ 1 }));
+    QCOMPARE(strings(library.path(), "SELECT name FROM pragma_table_info('placeholder') WHERE name='convention'"), QStringList({ "convention" }));
+}
+
+void DatabaseMigrationTest::addsPersonalSeriesWithoutChangingLegacySeries()
+{
+    QTemporaryDir library;
+    QVERIFY(QDir().mkpath(LibraryPaths::libraryDataPath(library.path())));
+    QString connection;
+    {
+        auto db = DataBaseManagement::createDatabase(LibraryPaths::libraryDatabasePath(library.path()));
+        connection = db.connectionName();
+        QSqlQuery query(db);
+        QVERIFY(query.exec("INSERT INTO comic_info(id,hash,title,series,number,rating) VALUES(1,'keep','Title','Legacy series','12',4)"));
+        QVERIFY(query.exec("ALTER TABLE comic_info DROP COLUMN seriesName"));
+        QVERIFY(query.exec("ALTER TABLE placeholder DROP COLUMN seriesName"));
+        QVERIFY(query.exec("UPDATE db_info SET version='10.5.4'"));
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QVERIFY(DataBaseManagement::updateToCurrentVersion(library.path(), true));
+    QCOMPARE(strings(library.path(), "SELECT series || ':' || number FROM comic_info WHERE id=1"), QStringList({ "Legacy series:12" }));
+    QCOMPARE(ints(library.path(), "SELECT rating FROM comic_info WHERE id=1"), QList<int>({ 4 }));
+    QCOMPARE(ints(library.path(), "SELECT seriesName IS NULL FROM comic_info WHERE id=1"), QList<int>({ 1 }));
+    QCOMPARE(strings(library.path(), "SELECT name FROM pragma_table_info('placeholder') WHERE name='seriesName'"), QStringList({ "seriesName" }));
 }
 
 QTEST_GUILESS_MAIN(DatabaseMigrationTest)

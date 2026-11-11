@@ -3,9 +3,9 @@
 
 namespace YACReader::FeatureFlags {
 
-// The file organization workflow is still experimental. Keep its actions out
-// of menus and shortcut management until the feature is ready for production.
-inline constexpr bool organizeFiles = true;
+// Legacy file organization is retained for reference/compatibility, with all
+// desktop menu and shortcut entry points closed. Use the metadata editor for names.
+inline constexpr bool organizeFiles = false;
 
 } // namespace YACReader::FeatureFlags
 

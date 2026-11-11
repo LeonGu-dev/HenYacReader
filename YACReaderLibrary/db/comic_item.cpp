@@ -1,6 +1,7 @@
 #include "comic_item.h"
 
 #include "db_helper.h"
+#include "metadata_filter.h"
 #include "overloaded.h"
 #include "qnaturalsorting.h"
 #include "search_query.h"
@@ -210,6 +211,26 @@ std::optional<QList<ComicItem>> loadSmartList(SmartListId smartListId, QSqlDatab
     const auto list = DBHelper::loadSmartList(smartListId, db);
     if (!list)
         return std::nullopt;
+    if (MetadataFilter::isSavedQuery(list->query)) {
+        const auto filter = MetadataFilter::fromSavedQuery(list->query);
+        if (!filter)
+            return QList<ComicItem>();
+        QSqlQuery query(db);
+        const auto folderId = MetadataFilter::savedFolderId(list->query);
+        query.prepare("SELECT " + ComicDB::selectList("c", "ci") + " FROM comic c INNER JOIN comic_info ci ON c.comicInfoId = ci.id" +
+                      (folderId ? " WHERE c.parentId = :folder AND EXISTS (SELECT 1 FROM folder WHERE id = :folder)" : ""));
+        if (folderId)
+            query.bindValue(":folder", *folderId);
+        if (!query.exec())
+            return std::nullopt;
+        QList<ComicItem> result;
+        for (const auto &item : fromQuery(query)) {
+            const auto *comic = rowComic(item);
+            if (comic && filter->matches(comic->info, comic->info.rating))
+                result.append(item);
+        }
+        return sortedForSearch(result);
+    }
     try {
         auto query = allComicsSearchQuery(db, list->query);
         return sortedForSearch(fromQuery(query));

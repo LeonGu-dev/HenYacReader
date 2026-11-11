@@ -44,6 +44,8 @@ struct ComicProgressUpdate {
 class DBHelper
 {
 public:
+    // Stored picker values in this database only, independent of folder/list filters.
+    static QMap<QString, QStringList> metadataVocabulary(QSqlDatabase &db);
     // server
     static YACReaderLibraries getLibraries();
     static QList<Folder> getFolderSubfoldersFromLibrary(qulonglong libraryId, qulonglong folderId);
@@ -112,6 +114,8 @@ public:
     // the placeholder gets a new id; `placeholder.id` is not used
     static std::optional<PlaceholderId> insertPlaceholder(const Placeholder &placeholder, QSqlDatabase &db);
     static qulonglong insertReadingList(const QString &name, QSqlDatabase &db);
+    // Creates the list and all entries atomically. The caller supplies the displayed order.
+    static std::optional<ReadingListId> saveReadingListSnapshot(const QString &name, const QList<ComicId> &rows, QSqlDatabase &db);
     // at the end of the order
     static std::optional<SmartListId> insertSmartList(const QString &name, const QString &query, QSqlDatabase &db);
     static qulonglong insertReadingSubList(const QString &name, qulonglong parentId, int ordering, QSqlDatabase &db);
@@ -123,6 +127,7 @@ public:
     static bool updateFromReader(ComicInfo &comicInfo, QSqlDatabase &db);
     static bool updateAdded(ComicInfo *comicInfo, QSqlDatabase &db);
     // writes only the fields in the patch, and marks the comic_info as edited
+    static bool updateComicRating(ComicInfoId id, int rating, QSqlDatabase &db);
     static bool updateComicInfoMetadata(ComicInfoId id, const DescriptiveMetadataPatch &patch, QSqlDatabase &db);
     static bool updatePlaceholderMetadata(PlaceholderId id, const DescriptiveMetadataPatch &patch, QSqlDatabase &db);
     // NULL when the placeholder has no cover; fails when the placeholder is gone

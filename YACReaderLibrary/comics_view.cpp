@@ -5,6 +5,7 @@
 #include "comic_db.h"
 #include "comic_files_manager.h"
 #include "comic_info_object.h"
+#include "metadata_chip_colors.h"
 
 #include <QGuiApplication>
 #include <QQmlContext>
@@ -42,6 +43,8 @@ ComicsView::ComicsView(QWidget *parent)
 
     ctxt->setContextProperty("comic", comicInfo);
     ctxt->setContextProperty("comicInfo", comicInfo);
+
+    ctxt->setContextProperty("metadataChipColors", &MetadataChipColors::instance());
 
     ctxt->setContextProperty("comic_info_index", 0);
 

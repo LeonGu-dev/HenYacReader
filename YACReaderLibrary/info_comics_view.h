@@ -57,6 +57,7 @@ protected:
     QToolBar *toolbar;
     QObject *flow;
     QObject *list;
+    QMetaObject::Connection modelDataChangedConnection;
 
     YACReaderComicsSelectionHelper *selectionHelper;
     YACReaderComicInfoHelper *comicInfoHelper;

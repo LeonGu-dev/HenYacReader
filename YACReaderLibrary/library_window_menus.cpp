@@ -253,18 +253,8 @@ void LibraryWindowMenus::showComicsContextMenu(const QPoint &point, bool showFul
     menu->addAction(actions.updateCurrentFolderAction);
     menu->addSeparator();
     menu->addAction(actions.editSelectedComicsAction);
-    menu->addAction(actions.getInfoAction);
-    if (comicManagementCoordinator->canMatchSelectionToLibraryComic()) {
-        auto matchAction = menu->addAction(tr("Match to library comic..."));
-        // the dialog runs its own event loop, so the menu is gone first
-        connect(matchAction, &QAction::triggered, comicManagementCoordinator, &ComicManagementCoordinator::matchSelectedToLibraryComic, Qt::QueuedConnection);
-    }
-    menu->addAction(actions.asignOrderAction);
-    if (YACReader::FeatureFlags::organizeFiles) {
-        menu->addSeparator();
-        menu->addAction(actions.renameComicsFilesAction);
-        menu->addAction(actions.organizeComicsFilesAction);
-    }
+    // Keep legacy metadata download, numbering and file organization actions
+    // internally. Filename editing is exposed through the metadata editor.
     menu->addSeparator();
     menu->addAction(actions.selectAllComicsAction);
     menu->addSeparator();
@@ -384,16 +374,7 @@ void LibraryWindowMenus::setupAddToSubmenu(QMenu &menu)
     menu.addAction(actions.addToFavoritesAction);
     actions.addToMenuAction->setMenu(&menu);
 
-    const auto labels = listsModel->getLabels();
-    if (!labels.isEmpty())
-        menu.addSeparator();
-    for (auto *label : labels) {
-        auto action = new QAction(label->getIcon(), label->name(), &menu);
-        menu.addAction(action);
-
-        const auto labelId = label->getId();
-        connect(action, &QAction::triggered, comicManagementCoordinator, [coordinator = comicManagementCoordinator, labelId] { coordinator->addSelectedComicsToLabel(labelId); });
-    }
+    // Old label membership is kept in the database, without a desktop entry.
 }
 
 void LibraryWindowMenus::showFoldersContextMenu(const QPoint &point)

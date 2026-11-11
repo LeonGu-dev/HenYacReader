@@ -67,6 +67,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QSettings>
+#include <QShortcut>
 #include <QShowEvent>
 #include <QSplitter>
 #include <QSqlError>
@@ -90,6 +91,13 @@ LibraryWindow::LibraryWindow()
     createSettings();
 
     setupUI();
+    exitFullscreenShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+    exitFullscreenShortcut->setEnabled(false);
+    exitFullscreenShortcut->setAutoRepeat(false);
+    connect(exitFullscreenShortcut, &QShortcut::activated, this, [this] {
+        if (fullscreen)
+            toggleFullScreen();
+    });
 
     // Adding the first library can open a modal upgrade or recovery prompt.
     // Let main() show the window before entering that nested event loop.
@@ -350,9 +358,7 @@ void LibraryWindow::doLayout()
 
     readingListsTitle->addAction(actions.newListMenuAction);
     // readingListsTitle->addSepartor();
-    readingListsTitle->addAction(actions.addLabelAction);
     // readingListsTitle->addSepartor();
-    readingListsTitle->addAction(actions.renameListAction);
     readingListsTitle->addAction(actions.deleteReadingListAction);
 
     // FINAL LAYOUT-------------------------------------------------------------
@@ -556,7 +562,8 @@ void LibraryWindow::setupCoordinators()
 
         switch (type) {
         case ReadingListModel::SmartList:
-            addAction(tr("Edit smart list..."), [this, list] { readingListManagementCoordinator->editSmartList(list); });
+            if (const auto saved = listsModel->smartList(list); saved && MetadataFilter::fromSavedQuery(saved->query))
+                addAction(tr("Edit smart list..."), [this, list] { readingListManagementCoordinator->editSmartList(list); });
             addAction(tr("Delete smart list"), [this, list] { readingListManagementCoordinator->deleteList(list); });
             menu.addSeparator();
             addAction(tr("New folder..."), [this, list] { readingListManagementCoordinator->addListFolderAt(list); });
@@ -571,10 +578,6 @@ void LibraryWindow::setupCoordinators()
             break;
         case ReadingListModel::ReadingList:
         case ReadingListModel::Label: {
-            const auto listKind = type == ReadingListModel::Label ? ListKind::Label : ListKind::ReadingList;
-            const auto listId = index.data(ReadingListModel::IDRole).toULongLong();
-            const auto name = index.data(Qt::DisplayRole).toString();
-            addAction(tr("Match to library comics..."), [this, listKind, listId, name] { readingListManagementCoordinator->matchListToLibraryComics(listKind, listId, name); });
             if (type == ReadingListModel::ReadingList) {
                 addAction(tr("Export reading list..."), [this, list] { readingListManagementCoordinator->exportReadingList(list); });
                 menu.addSeparator();
@@ -796,16 +799,9 @@ void LibraryWindow::createToolBars()
     auto startSpacer = new QWidget();
     startSpacer->setFixedWidth(5);
     editInfoToolBar->addWidget(startSpacer);
-    editInfoToolBar->addAction(actions.openComicAction);
     editInfoToolBar->addSeparator();
+    editInfoToolBar->addAction(actions.openComicAction);
     editInfoToolBar->addAction(actions.editSelectedComicsAction);
-    if (YACReader::FeatureFlags::organizeFiles) {
-        organizeToolButton = createMenuToolButton({ actions.renameComicsFilesAction, actions.organizeComicsFilesAction },
-                                                  tr("Rename or organize files"));
-        editInfoToolBar->addWidget(organizeToolButton);
-    }
-    editInfoToolBar->addAction(actions.getInfoAction);
-    editInfoToolBar->addAction(actions.asignOrderAction);
 
     editInfoToolBar->addSeparator();
 
@@ -843,10 +839,6 @@ void LibraryWindow::createToolBars()
 QMenu *LibraryWindow::createSearchMenu()
 {
     auto *menu = createSearchFiltersMenu(this, settings, [this](const QString &query) { applySearchQuery(query); });
-
-    // the macOS search field copies the menu once, so this item is always enabled
-    auto *saveAction = menu->addAction(tr("Save as smart list…"));
-    connect(saveAction, &QAction::triggered, this, [this] { readingListManagementCoordinator->addSmartList(searchText().trimmed()); });
 
     return menu;
 }
@@ -1152,6 +1144,7 @@ void LibraryWindow::toggleFullScreen()
 
 void LibraryWindow::toFullScreen()
 {
+    exitFullscreenShortcut->setEnabled(true);
     fromMaximized = this->isMaximized();
 
     sidebarColumn->hide();
@@ -1164,6 +1157,7 @@ void LibraryWindow::toFullScreen()
 
 void LibraryWindow::toNormal()
 {
+    exitFullscreenShortcut->setEnabled(false);
     sidebarColumn->show();
 
     contentViewsManager->toNormal();

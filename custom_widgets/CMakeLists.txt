@@ -60,6 +60,10 @@ endif()
 
 # --- custom_widgets_library (YACReaderLibrary-specific) ---
 set(LIBRARY_EXTRA_WIDGETS
+    metadata_picker.cpp
+    metadata_picker.h
+    metadata_value_chips.h
+    compact_disclosure_button.h
     metadata_chip_colors.h
     metadata_chip_colors.cpp
     metadata_chip_delegate.h

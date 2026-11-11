@@ -4,11 +4,16 @@
 #include "cbl_import_dialog.h"
 #include "cbl_list_match.h"
 #include "comic_model.h"
+#include "data_base_management.h"
+#include "db_helper.h"
 #include "delayed_progress_dialog.h"
+#include "edit_filter_smart_list_dialog.h"
+#include "folder.h"
 #include "move_to_folder_dialog.h"
 #include "new_list_folder_dialog.h"
 #include "reading_list_model.h"
 #include "reading_list_page.h"
+#include "save_filter_smart_list_dialog.h"
 #include "smart_list_dialog.h"
 #include "yacreader_global.h"
 
@@ -34,7 +39,7 @@ ReadingListManagementCoordinator::ReadingListManagementCoordinator(QWidget *dial
                                                                    CurrentListProvider currentListProvider,
                                                                    LibraryPathProvider libraryPathProvider,
                                                                    QSettings *settings)
-    : QObject(dialogParent), dialogParent(dialogParent), listsModel(listsModel), currentListProvider(std::move(currentListProvider)), libraryPathProvider(std::move(libraryPathProvider)), settings(settings)
+    : QObject(dialogParent), dialogParent(dialogParent), listsModel(listsModel), comicsModel(comicsModel), currentListProvider(std::move(currentListProvider)), libraryPathProvider(std::move(libraryPathProvider)), settings(settings)
 {
     connect(listsModel, &ReadingListModel::addComicsToFavorites, comicsModel, QOverload<const QList<qulonglong> &>::of(&ComicModel::addComicsToFavorites));
     connect(listsModel, &ReadingListModel::addComicsToLabel, comicsModel, QOverload<const QList<ComicRowId> &, qulonglong>::of(&ComicModel::addComicsToLabel));
@@ -120,6 +125,18 @@ void ReadingListManagementCoordinator::editSmartList(const QModelIndex &list)
         return;
 
     const QPersistentModelIndex index(list);
+    if (MetadataFilter::isSavedQuery(smartList->query)) {
+        const auto libraryPath = libraryPathProvider();
+        EditFilterSmartListDialog dialog(YACReader::LibraryPaths::libraryDataPath(libraryPath), smartList->name, smartList->query, dialogParent);
+        if (dialog.exec() != QDialog::Accepted || !index.isValid() || libraryPathProvider() != libraryPath)
+            return;
+        if (!listsModel->updateSmartList(index, dialog.listName(), dialog.savedQuery())) {
+            QMessageBox::critical(dialogParent, tr("Edit smart list"), tr("The smart list could not be saved."));
+            return;
+        }
+        emit listEntriesChanged();
+        return;
+    }
     SmartListDialog dialog(settings, smartList->name, smartList->query, dialogParent);
     connect(&dialog, &SmartListDialog::searchChanged, this, &ReadingListManagementCoordinator::searchRequested);
     emit searchRequested(smartList->query);
@@ -336,4 +353,66 @@ void ReadingListManagementCoordinator::moveToFolder(const QModelIndex &list)
         return;
     if (!listsModel->moveToFolder(item, dialog.folder()))
         QMessageBox::critical(dialogParent, tr("Move to folder"), tr("\"%1\" could not be moved.").arg(listsModel->name(item)));
+}
+
+void ReadingListManagementCoordinator::saveFilterAsSmartList()
+{
+    const auto path = libraryPathProvider();
+    if (path.isEmpty())
+        return;
+    const auto filter = comicsModel->metadataFilter();
+    std::optional<Folder> currentFolder;
+    if (comicsModel->getMode() == ComicModel::Folder) {
+        QString connection;
+        {
+            auto db = DataBaseManagement::loadDatabase(YACReader::LibraryPaths::libraryDataPath(path));
+            connection = db.connectionName();
+            currentFolder = DBHelper::loadFolder(comicsModel->getSourceId(), db);
+        }
+        QSqlDatabase::removeDatabase(connection);
+    }
+    SaveFilterSmartListDialog dialog(currentFolder ? std::optional(currentFolder->path) : std::nullopt, dialogParent);
+    if (dialog.exec() != QDialog::Accepted || libraryPathProvider() != path)
+        return;
+    const auto name = dialog.listName();
+    const auto query = filter.savedQuery(dialog.currentFolderOnly() && currentFolder ? std::optional(currentFolder->id.value()) : std::nullopt);
+    if (!listsModel->addSmartList(name, query).isValid())
+        QMessageBox::critical(dialogParent, tr("Save filter as smart list"), tr("The list could not be saved."));
+}
+
+void ReadingListManagementCoordinator::saveFilterAsReadingList()
+{
+    const auto path = libraryPathProvider();
+    if (path.isEmpty())
+        return;
+    QList<ComicId> rows;
+    QSet<qulonglong> seen;
+    for (int row = 0; row < comicsModel->rowCount(); ++row) {
+        const auto index = comicsModel->index(row, 0);
+        const auto record = comicsModel->record(index);
+        if (const auto *comic = recordComic(record); comic && !seen.contains(comic->info.id.value())) {
+            seen.insert(comic->info.id.value());
+            rows.append(comic->file.id);
+        }
+    }
+    if (rows.isEmpty()) {
+        QMessageBox::information(dialogParent, tr("Save filter as reading list"), tr("There are no comics to save."));
+        return;
+    }
+    bool accepted = false;
+    const auto name = QInputDialog::getText(dialogParent, tr("Save filter as reading list"), tr("List name:"), QLineEdit::Normal, { }, &accepted).trimmed();
+    if (!accepted || name.isEmpty() || libraryPathProvider() != path)
+        return;
+    std::optional<ReadingListId> saved;
+    QString connection;
+    {
+        auto db = DataBaseManagement::loadDatabase(YACReader::LibraryPaths::libraryDataPath(path));
+        connection = db.connectionName();
+        saved = DBHelper::saveReadingListSnapshot(name, rows, db);
+    }
+    QSqlDatabase::removeDatabase(connection);
+    if (saved)
+        listsModel->appendReadingList(*saved, name);
+    else
+        QMessageBox::critical(dialogParent, tr("Save filter as reading list"), tr("The list could not be saved."));
 }

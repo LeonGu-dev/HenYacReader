@@ -5,6 +5,7 @@
 #include "feature_flags.h"
 #include "folder_management_coordinator.h"
 #include "help_about_dialog.h"
+#include "icon_utils.h"
 #include "library_database_maintenance_coordinator.h"
 #include "library_management_coordinator.h"
 #include "library_repair_coordinator.h"
@@ -447,11 +448,20 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
     importReadingListsAction->setToolTip(tr("Import CBL reading lists into the current library"));
     window->addAction(importReadingListsAction);
 
+    addSmartListAction->setVisible(false);
+    addSmartListAction->setEnabled(false);
+    addSmartListAction->setShortcut(QKeySequence());
+    saveFilterSmartListAction = new QAction(tr("Save filter as smart list"), window);
+    saveFilterReadingListAction = new QAction(tr("Save filter as reading list"), window);
+    saveFilterSmartListAction->setObjectName("saveFilterSmartList");
+    saveFilterReadingListAction->setObjectName("saveFilterReadingList");
+
     newListMenuAction = new QAction(tr("New"), window);
     newListMenuAction->setToolTip(tr("Add or import reading lists"));
     auto newListMenu = new QMenu(window);
     newListMenu->addAction(addReadingListAction);
-    newListMenu->addAction(addSmartListAction);
+    newListMenu->addAction(saveFilterSmartListAction);
+    newListMenu->addAction(saveFilterReadingListAction);
     newListMenu->addAction(addListFolderAction);
     newListMenu->addSeparator();
     newListMenu->addAction(importReadingListsAction);
@@ -513,6 +523,14 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
 #ifndef Q_OS_MACOS
     window->addAction(toggleFullScreenAction);
 #endif
+
+    // Closing a visible menu alone must not leave old configured shortcuts live.
+    for (auto *action : { getInfoAction, asignOrderAction, addLabelAction,
+                          renameFilesAction, organizeFilesAction, renameComicsFilesAction, organizeComicsFilesAction }) {
+        action->setVisible(false);
+        action->setEnabled(false);
+        action->setShortcut(QKeySequence());
+    }
 
     // disable actions
     disableAllActions();
@@ -642,6 +660,8 @@ void LibraryWindowActions::createConnections(
     // lists
     QObject::connect(addReadingListAction, &QAction::triggered, readingListManagementCoordinator, &ReadingListManagementCoordinator::addReadingList);
     QObject::connect(importReadingListsAction, &QAction::triggered, readingListManagementCoordinator, &ReadingListManagementCoordinator::importReadingLists);
+    QObject::connect(saveFilterSmartListAction, &QAction::triggered, readingListManagementCoordinator, &ReadingListManagementCoordinator::saveFilterAsSmartList);
+    QObject::connect(saveFilterReadingListAction, &QAction::triggered, readingListManagementCoordinator, &ReadingListManagementCoordinator::saveFilterAsReadingList);
     QObject::connect(addSmartListAction, &QAction::triggered, readingListManagementCoordinator, [readingListManagementCoordinator] { readingListManagementCoordinator->addSmartList(); });
     QObject::connect(addListFolderAction, &QAction::triggered, readingListManagementCoordinator, &ReadingListManagementCoordinator::addListFolder);
     QObject::connect(deleteReadingListAction, &QAction::triggered, readingListManagementCoordinator, &ReadingListManagementCoordinator::deleteCurrentList);
@@ -728,10 +748,8 @@ void LibraryWindowActions::setUpShortcutsManagement(EditShortcutsDialog *editSho
             << resetComicRatingAction
             << selectAllComicsAction
             << editSelectedComicsAction
-            << asignOrderAction
             << deleteMetadataAction
-            << deleteComicsAction
-            << getInfoAction;
+            << deleteComicsAction;
     if (!YACReader::FeatureFlags::organizeFiles) {
         tmpList.removeOne(renameComicsFilesAction);
         tmpList.removeOne(organizeComicsFilesAction);
@@ -770,11 +788,9 @@ void LibraryWindowActions::setUpShortcutsManagement(EditShortcutsDialog *editSho
     editShortcutsDialog->addActionsGroup("Lists", theme.shortcutsIcons.foldersIcon, // TODO change icon
                                          tmpList = QList<QAction *>()
                                                  << addReadingListAction
-                                                 << addSmartListAction
                                                  << addListFolderAction
                                                  << importReadingListsAction
                                                  << deleteReadingListAction
-                                                 << addLabelAction
                                                  << renameListAction);
     allActions << tmpList;
 
@@ -976,7 +992,9 @@ void LibraryWindowActions::updateTheme(const Theme &theme)
     openLibraryAction->setIcon(sidebarIcons.openLibraryIcon);
     addFolderAction->setIcon(sidebarIcons.addNewIcon);
     renameFolderAction->setIcon(sidebarIcons.renameListIcon);
-    deleteFolderAction->setIcon(sidebarIcons.deleteIcon);
+    deleteFolderAction->setIcon(QIcon(recoloredSvgToThemeFile(":/images/sidebar/delete_sidebar.svg",
+                                                              QColor("#e04b55"), QColor("#ba3540"), theme.meta.id,
+                                                              { .suffix = "_folder_delete" })));
     setRootIndexAction->setIcon(sidebarIcons.setRootIcon);
     expandAllNodesAction->setIcon(sidebarIcons.expandIcon);
     colapseAllNodesAction->setIcon(sidebarIcons.colapseIcon);

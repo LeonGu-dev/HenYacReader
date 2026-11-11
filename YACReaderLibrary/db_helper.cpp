@@ -1140,6 +1140,17 @@ bool DBHelper::update(ComicInfo *comicInfo, QSqlDatabase &db)
     return success;
 }
 
+bool DBHelper::updateComicRating(ComicInfoId id, int rating, QSqlDatabase &db)
+{
+    if (rating < 0 || rating > 5)
+        return false;
+    QSqlQuery query(db);
+    query.prepare("UPDATE comic_info SET rating = :rating WHERE id = :id");
+    query.bindValue(":rating", rating);
+    query.bindValue(":id", id.value());
+    return query.exec() && query.numRowsAffected() == 1;
+}
+
 bool DBHelper::updateComicInfoMetadata(ComicInfoId id, const DescriptiveMetadataPatch &patch, QSqlDatabase &db)
 {
     if (patch.isEmpty())
@@ -2856,4 +2867,54 @@ QString DBHelper::getLibraryInfo(QUuid id)
     info += "<b>Number of comics</b>:<br/>" + libraryInfo.value(QStringLiteral("comicCount")).toString() + "<br/><br/>";
     info += "<b>Number of read comics</b>:<br/>" + libraryInfo.value(QStringLiteral("readComicCount")).toString() + "<br/><br/>";
     return info;
+}
+
+std::optional<ReadingListId> DBHelper::saveReadingListSnapshot(const QString &name, const QList<ComicId> &rows, QSqlDatabase &db)
+{
+    if (name.trimmed().isEmpty() || rows.isEmpty() || !db.transaction())
+        return std::nullopt;
+    const auto id = insertReadingList(name.trimmed(), db);
+    bool written = id != 0;
+    QSqlQuery insert(db);
+    insert.prepare("INSERT INTO reading_list_entry(reading_list_id,ordering,comic_info_id) SELECT :list,:ordering,comicInfoId FROM comic WHERE id = :comic");
+    int ordering = 0;
+    for (const auto comic : rows) {
+        if (!written)
+            break;
+        insert.bindValue(":list", id);
+        insert.bindValue(":ordering", ordering++);
+        insert.bindValue(":comic", comic.value());
+        written = insert.exec() && insert.numRowsAffected() == 1;
+    }
+    if (written && db.commit())
+        return ReadingListId(id);
+    db.rollback();
+    return std::nullopt;
+}
+
+QMap<QString, QStringList> DBHelper::metadataVocabulary(QSqlDatabase &db)
+{
+    QMap<QString, QStringList> result;
+    if (!db.isOpen())
+        return result;
+    const QStringList fields { "writer", "circle", "work", "characters", "tags", "convention", "translator", "seriesName" };
+    const QSet<QString> multiple { "writer", "characters", "tags" };
+    QMap<QString, QSet<QString>> values;
+    QSqlQuery query(db);
+    if (!query.exec("SELECT " + fields.join(',') + " FROM comic_info WHERE id IN (SELECT comicInfoId FROM comic) UNION ALL SELECT " + fields.join(',') + " FROM placeholder"))
+        return result;
+    while (query.next())
+        for (int i = 0; i < fields.size(); ++i) {
+            const auto field = fields[i];
+            const auto strings = multiple.contains(field) ? query.value(i).toString().split('\n', Qt::SkipEmptyParts) : QStringList { query.value(i).toString() };
+            for (const auto &text : strings)
+                if (!text.trimmed().isEmpty())
+                    values[field].insert(text.trimmed());
+        }
+    for (const auto &field : fields) {
+        auto sorted = values.value(field).values();
+        sorted.sort(Qt::CaseInsensitive);
+        result.insert(field, sorted);
+    }
+    return result;
 }

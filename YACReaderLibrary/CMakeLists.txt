@@ -113,6 +113,8 @@ qt_add_executable(YACReaderLibrary WIN32
     comic_management_coordinator.h
     comic_management_coordinator.cpp
     reading_list_management_coordinator.h
+    save_filter_smart_list_dialog.h
+    edit_filter_smart_list_dialog.h
     reading_list_management_coordinator.cpp
     folder_management_coordinator.h
     folder_management_coordinator.cpp
@@ -179,6 +181,7 @@ qt_add_executable(YACReaderLibrary WIN32
     comics_view.h
     comics_view.cpp
     comic_info_object.h
+    folder_delete_confirmation.h
     comic_info_object.cpp
     content_view_state.h
     comics_view_transition.h
@@ -460,6 +463,7 @@ set(yacreaderlibrary_qml_files
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/info-indicator.svg
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/info-shadow.svg
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/info-top-shadow.svg
+    ${CMAKE_CURRENT_SOURCE_DIR}/qml/CurrentComicBanner.qml
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/ComicInfoView.qml
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/info-favorites.svg
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/info-rating.svg
@@ -484,6 +488,7 @@ set(yacreaderlibrary_qml_translation_files
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/InfoFavorites.qml
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/InfoRating.qml
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/InfoComicsView.qml
+    ${CMAKE_CURRENT_SOURCE_DIR}/qml/CurrentComicBanner.qml
     ${CMAKE_CURRENT_SOURCE_DIR}/qml/ComicInfoView.qml
 )
 set(yacreaderlibrary_theme_files

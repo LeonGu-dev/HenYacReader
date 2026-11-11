@@ -82,6 +82,7 @@ GridComicsView::GridComicsView(QWidget *parent)
     selectionHelper->setModel(model);
     contentModel->setComicModel(model);
     connect(contentModel, &QAbstractItemModel::modelReset, this, [this]() {
+        updateCurrentComicBanner();
         if (focusedFolderIndex.isValid())
             setFocusedFolder(focusedFolderIndex.row());
         else
@@ -249,9 +250,11 @@ void GridComicsView::setModel(ComicModel *model)
     clearFocusedFolder();
     disconnect(modelDataChangedConnection);
     disconnect(modelFavoritesChangedConnection);
+    disconnect(modelLayoutChangedConnection);
     ComicsView::setModel(model);
 
     modelDataChangedConnection = connect(model, &QAbstractItemModel::dataChanged, this, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight) {
+        updateCurrentComicBanner();
         if (selectionHelper->numItemsSelected() > 1) {
             const auto selectedRows = selectionHelper->selectedRows();
             const bool selectedComicChanged = std::any_of(selectedRows.cbegin(), selectedRows.cend(), [topLeft, bottomRight](const QModelIndex &index) {
@@ -269,7 +272,11 @@ void GridComicsView::setModel(ComicModel *model)
             updateInfoForIndex(index.row());
     });
 
+    modelLayoutChangedConnection = connect(model, &QAbstractItemModel::layoutChanged, this, [this]() {
+        updateCurrentComicBanner();
+    });
     modelFavoritesChangedConnection = connect(model, &ComicModel::favoritesChanged, this, [this](const QList<qulonglong> &comicIds) {
+        updateCurrentComicBanner();
         if (!showInfoAction->isChecked() || focusedFolderIndex.isValid())
             return;
 
@@ -890,7 +897,21 @@ void GridComicsView::updateCurrentComicBanner()
 
 void GridComicsView::publishCurrentComic(QQmlContext *ctxt)
 {
-    auto previous = std::exchange(currentComicInfo, new ComicInfoObject(ComicRecordCase::Comic { currentComic }, false, this));
+    // Resolve the banner's source row independently of the selected grid card.
+    // Reading lists use list-entry row IDs, so match the actual file rather than an info ID.
+    QModelIndex bannerIndex;
+    if (model != nullptr) {
+        for (int row = 0; row < model->rowCount(); ++row) {
+            const auto index = model->index(row, 0);
+            const auto comic = model->getComic(index);
+            if (comic && comic->file.id == currentComic.file.id) {
+                bannerIndex = index;
+                break;
+            }
+        }
+    }
+    auto previous = std::exchange(currentComicInfo, new ComicInfoObject(ComicRecordCase::Comic { currentComic }, bannerIndex.isValid() && model->isFavorite(bannerIndex), this));
+    ctxt->setContextProperty("currentComicSourceIndex", bannerIndex.isValid() ? bannerIndex.row() : -1);
     ctxt->setContextProperty("currentComic", currentComicInfo);
     ctxt->setContextProperty("currentComicInfo", currentComicInfo);
     delete previous;

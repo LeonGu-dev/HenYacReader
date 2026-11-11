@@ -57,6 +57,7 @@ public:
         Censorship,
         Translation,
         Favorite,
+        Convention,
         ColumnCount,
     };
 

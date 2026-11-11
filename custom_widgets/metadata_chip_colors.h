@@ -11,9 +11,11 @@ public:
     static MetadataChipColors &instance();
     static QColor defaultColor(int column, const QString &value);
     static QColor foregroundColor(const QColor &background);
+    static int columnForField(const QString &field);
     QColor color(int column, const QString &value);
     bool setColor(int column, const QString &value, const QColor &color);
     void reload();
+    Q_INVOKABLE QVariantMap colorsForField(const QString &field, const QString &value);
 signals:
     void colorsChanged();
 

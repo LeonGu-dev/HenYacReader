@@ -72,6 +72,13 @@ void InfoComicsView::setModel(ComicModel *model)
 
     ComicsView::setModel(model);
 
+    disconnect(modelDataChangedConnection);
+    modelDataChangedConnection = connect(model, &QAbstractItemModel::dataChanged, this, [this](const QModelIndex &first, const QModelIndex &last) {
+        const auto index = currentIndex();
+        if (index.isValid() && index.row() >= first.row() && index.row() <= last.row())
+            updateInfoForIndex(index.row());
+    });
+
     QQmlContext *ctxt = view->rootContext();
 
     /*if(_selectionModel != NULL)
@@ -96,7 +103,8 @@ void InfoComicsView::setModel(ComicModel *model)
     if (model->rowCount() > 0) {
         setCurrentIndex(model->index(0, 0));
         updateInfoForIndex(0);
-    }
+    } else
+        updateInfoForIndex(-1);
 
     if (flow != nullptr) {
         flow->disconnect();

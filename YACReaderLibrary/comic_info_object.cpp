@@ -2,7 +2,9 @@
 
 #include "overloaded.h"
 
+#include <QCoreApplication>
 #include <QFileInfo>
+#include <QLocale>
 
 ComicInfoObject::ComicInfoObject(QObject *parent)
     : QObject(parent), favorite(false)
@@ -549,4 +551,102 @@ bool ComicInfoObject::available() const
 bool ComicInfoObject::canSetReadState() const
 {
     return recordInfo(record) != nullptr;
+}
+
+QVariantMap ComicInfoObject::metadata() const
+{
+    QVariantMap values;
+    for (const auto &column : DescriptiveComicMetadata::columns())
+        values.insert(QString::fromLatin1(column.name), recordMetadata(record).*column.member);
+    return values;
+}
+
+QVariantList ComicInfoObject::detailRows() const
+{
+    using M = DescriptiveComicMetadata;
+    struct Field {
+        const char *key;
+        const char *label;
+        QVariant M::*member;
+        const char *chipField;
+        bool multiple;
+        bool compactHalf = false;
+        int compactOrder = 100;
+        int compactLimit = 0;
+    };
+    // Add/reorder descriptive rows here. Empty values and wrapping are handled
+    // by the shared delegate, independently of the number of metadata fields.
+    static const Field fields[] {
+        { "writer", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Author"), &M::writer, "", true, true, 0 },
+        { "circle", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Circle"), &M::circle, "", false, true, 1 },
+        { "convention", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Convention"), &M::convention, "convention", false, true, 3 },
+        { "work", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Work / IP"), &M::work, "work", false, true, 2 },
+        { "characters", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Characters"), &M::characters, "character", true, false, 4 },
+        { "tags", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Tags"), &M::tags, "tag", true, false, 5, 4 },
+        { "seriesName", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Series"), &M::seriesName, "seriesName", false, false, 7 },
+        { "translator", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Translator"), &M::translator, "", false, false, 6 },
+    };
+    const auto &metadata = recordMetadata(record);
+    QVariantList rows;
+    for (const auto &field : fields) {
+        const auto value = metadata.*field.member;
+        QStringList values = field.multiple ? value.toString().split('\n', Qt::SkipEmptyParts) : QStringList { value.toString() };
+        for (auto &text : values)
+            text = text.trimmed();
+        values.removeAll(QString());
+        if (values.isEmpty())
+            continue;
+        rows.append(QVariantMap {
+                { "key", QString::fromLatin1(field.key) },
+                { "label", QCoreApplication::translate("ComicMetadataEditor", field.label) },
+                { "values", values },
+                { "chipField", QString::fromLatin1(field.chipField) },
+                { "compactHalf", field.compactHalf },
+                { "compactOrder", field.compactOrder },
+                { "compactLimit", field.compactLimit },
+                { "note", field.member == &M::writer && metadata.isAnthology.toBool() ? QCoreApplication::translate("ComicMetadataEditor", "Anthology") : QString() },
+        });
+    }
+    return rows;
+}
+
+QStringList ComicInfoObject::statusBadges() const
+{
+    using M = DescriptiveComicMetadata;
+    struct Choice {
+        QVariant M::*member;
+        const char *value;
+        const char *label;
+    };
+    static const Choice choices[] {
+        { &M::publicationType, "doujinshi", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Doujinshi") },
+        { &M::publicationType, "tankobon", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Collected volume") },
+        { &M::publicationType, "magazine", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Magazine") },
+        { &M::publicationType, "artbook", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Artbook") },
+        { &M::color, "true", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Color") },
+        { &M::color, "false", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Black and white") },
+        { &M::censorship, "censored", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Censored") },
+        { &M::censorship, "uncensored", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Uncensored") },
+        { &M::translationStatus, "original", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Japanese") },
+        { &M::translationStatus, "translated", QT_TRANSLATE_NOOP("ComicMetadataEditor", "Chinese translation") },
+        { &M::translationStatus, "ai", QT_TRANSLATE_NOOP("ComicMetadataEditor", "AI translation") },
+    };
+    QStringList result;
+    const auto &metadata = recordMetadata(record);
+    for (const auto &choice : choices) {
+        const auto value = metadata.*choice.member;
+        if (!value.isNull() && (choice.member == &M::color ? (value.toBool() ? QStringLiteral("true") : QStringLiteral("false")) : value.toString()) == QLatin1String(choice.value))
+            result.append(QCoreApplication::translate("ComicMetadataEditor", choice.label));
+    }
+    return result;
+}
+
+QVariantMap ComicInfoObject::fileDetails() const
+{
+    return {
+        { "name", fileName },
+        { "path", recordPath(record) },
+        { "pages", numPages() },
+        { "size", getFileSize() > 0 ? QLocale().formattedDataSize(getFileSize()) : QString() },
+    };
 }

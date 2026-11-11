@@ -145,6 +145,8 @@ public:
     QAction *addReadingListAction;
     QAction *importReadingListsAction;
     QAction *addSmartListAction;
+    QAction *saveFilterSmartListAction;
+    QAction *saveFilterReadingListAction;
     QAction *addListFolderAction;
     QAction *deleteReadingListAction;
     QAction *addLabelAction;

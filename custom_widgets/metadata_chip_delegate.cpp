@@ -90,9 +90,10 @@ void MetadataChipDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
         const auto color = colorForValue(index.column(), chip.value);
         painter->setPen(color.darker(110));
         painter->setBrush(color);
-        painter->drawRoundedRect(chip.rect.adjusted(0, 0, -1, -1), 5, 5);
+        const QRectF frame(chip.rect.adjusted(0, 0, -1, -1));
+        painter->drawRoundedRect(frame, 5, 5);
         painter->setPen(MetadataChipColors::foregroundColor(color));
-        painter->drawText(chip.rect.adjusted(8, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft, chip.text);
+        painter->drawText(frame.adjusted(8, 0, -8, 0), Qt::AlignCenter, chip.text);
     }
     if (!layout.overflow.isEmpty()) {
         painter->setPen(styled.palette.color((styled.state & QStyle::State_Selected) ? QPalette::HighlightedText : QPalette::Text));

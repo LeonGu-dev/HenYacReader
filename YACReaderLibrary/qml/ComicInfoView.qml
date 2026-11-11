@@ -1,721 +1,322 @@
-import QtQuick 2.15
+import QtQuick
+import QtQuick.Controls.Basic
+import QtQuick.Layouts
 
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.12
-
-import com.yacreader.ComicInfo 1.0
-
-
-Rectangle {
-    color : "transparent"
+Item {
     id: mainContainer
+    objectName: "comicInfoDetails"
+    implicitHeight: content.implicitHeight + 2 * inset
+    height: implicitHeight
 
-    height: info.height + 2 * topMargin
+    property var infoObject: comicInfo
+    property int sourceIndex: comic_info_index
+    property bool compact: false
+    property bool showFileInformation: !compact
+    property var expandedFields: ({})
+    readonly property int inset: compact ? 0 : (width < 450 ? 18 : 28)
+    readonly property var rows: {
+        let result = mainContainer.infoObject ? mainContainer.infoObject.detailRows.slice() : [];
+        return compact ? result.sort((a, b) => a.compactOrder - b.compactOrder) : result;
+    }
+    readonly property var badges: mainContainer.infoObject ? mainContainer.infoObject.statusBadges : []
+    readonly property var file: mainContainer.infoObject ? mainContainer.infoObject.fileDetails : ({})
+    property bool fileExpanded: false
+    property int colorRevision: 0
+    readonly property real labelWidth: {
+        let longest = 58;
+        for (let row of rows)
+            longest = Math.max(longest, Math.ceil(labelMetrics.advanceWidth(row.label)));
+        return Math.min(width * 0.28, longest);
+    }
+    FontMetrics { id: labelMetrics; font.pixelSize: 14 }
 
-    property string infoColor: infoMetadataTextColor
-    property font infoFont: Qt.font({
+    onFileChanged: { fileExpanded = false; expandedFields = ({}); }
+    Connections {
+        target: metadataChipColors
+        function onColorsChanged() { mainContainer.colorRevision++; }
+    }
 
-                                        family: "Arial",
-                                        pixelSize: 14
-                                    });
+    ColumnLayout {
+        id: content
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.margins: mainContainer.inset
+        spacing: mainContainer.compact ? 12 : 16
 
-    property int topMargin : 27
-
-    property bool compact : width <= 650
-
-    RowLayout
-    {
-        id:main_layout
-        anchors.fill: parent
-
-        //READ------------------------------------------------------------
-        ColumnLayout
-        {
-            Layout.topMargin: topMargin
-            Layout.maximumWidth: 61
-            Layout.fillHeight: true
-            id: readStatus
-
-            Layout.alignment: Qt.AlignTop |
-                              Qt.AlignHCenter
-
-            Rectangle {
-                color: "transparent"
-                width:  61
-                height: 24
-
-                InfoTick {
-                    x: 27
-                    y: 5
-
-                    read: comicInfo ? comicInfo.read ?? false : false
-                    enabled: comicInfo ? comicInfo.canSetReadState ?? true : true
-
-                    onReadChangedByUser: {
-                        comicInfo.read = read;
-                        comicInfoHelper.setRead(comic_info_index, read);
-                    }
-                }
-            }
-
-            visible: !mainContainer.compact
-        }
-
-        //INFO------------------------------------------------------------
-        ColumnLayout
-        {
-            id: info
-            //width: parent.width
-            //Layout.fillWidth: true
-
-            Layout.alignment: Qt.AlignTop |
-                              Qt.AlignLeft
-
-            Layout.maximumWidth: mainContainer.compact ? mainContainer.width : 960
-
-            Layout.leftMargin: mainContainer.compact ? 30 : 0
-
-            RowLayout
-            {
-                Layout.topMargin: topMargin
-
-                InfoTick {
-                    Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                    Layout.topMargin: 5
-
-                    read: comicInfo ? comicInfo.read ?? false : false
-                    enabled: comicInfo ? comicInfo.canSetReadState ?? true : true
-
-                    onReadChangedByUser: {
-                        comicInfo.read = read;
-                        comicInfoHelper.setRead(comic_info_index, read);
-                    }
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                InfoFavorites {
-                    Layout.topMargin: 2
-                    Layout.rightMargin: 17
-                    Layout.alignment: Qt.AlignTop
-
-                    active: comicInfo ? comicInfo.isFavorite ?? false : false
-                    enabled: comicInfo ? comicInfo.available ?? true : true
-
-                    onActiveChangedByUser: {
-                        if(active)
-                            comicInfoHelper.addToFavorites(comic_info_index);
-                        else
-                            comicInfoHelper.removeFromFavorites(comic_info_index);
-
-                        comicInfo.isFavorite = active;
-                    }
-                }
-
-                InfoRating {
-                    Layout.alignment: Qt.AlignTop
-                    Layout.rightMargin: 30
-                    rating: comicInfo ? comicInfo.rating ?? 0 : 0
-                    enabled: comicInfo ? comicInfo.canSetReadState ?? true : true
-
-                    onRatingChangedByUser: {
-                        comicInfo.rating = rating;
-                        comicInfoHelper.rate(comic_info_index, rating);
-                    }
-                }
-
-                visible: mainContainer.compact
-            }
-
-            RowLayout
-            {
+        RowLayout {
+            Layout.fillWidth: !mainContainer.compact
+            Layout.preferredWidth: mainContainer.compact ? Math.min(content.width, titleColumn.implicitWidth + 36) : -1
+            Layout.maximumWidth: content.width
+            Layout.alignment: Qt.AlignLeft
+            spacing: 16
+            ColumnLayout {
+                id: titleColumn
+                Layout.fillWidth: true
+                spacing: 4
                 Text {
-                    Layout.topMargin: mainContainer.compact ? 18 : topMargin
+                    objectName: "detailTitle"
                     Layout.fillWidth: true
-                    Layout.rightMargin: mainContainer.compact ? 30 : 0
-
-                    id: title
-
+                    text: mainContainer.infoObject ? mainContainer.infoObject.getTitleOrFileName() : ""
+                    textFormat: Text.PlainText
                     color: infoTextColor
-                    font.family: "Arial"
+                    font.pixelSize: 22
                     font.bold: true
-                    font.pixelSize: mainContainer.compact ? 18 : 21;
-                    wrapMode: Text.WordWrap
-
-                    text: comic ? comic.getInfoTitle() ?? "" : ""
+                    wrapMode: Text.Wrap
                 }
-
-                RowLayout
-                {
-                    visible: !mainContainer.compact
-
-                    Layout.alignment: Qt.AlignTop
-                    Layout.topMargin: topMargin
-
-                    InfoFavorites {
-                        Layout.topMargin: 1
-                        Layout.rightMargin: 17
-                        Layout.alignment: Qt.AlignTop
-
-                        active: comicInfo ? comicInfo.isFavorite ?? false : false
-                        enabled: comicInfo ? comicInfo.available ?? true : true
-
-                        onActiveChangedByUser: {
-                            if(active)
-                                comicInfoHelper.addToFavorites(comic_info_index);
-                            else
-                                comicInfoHelper.removeFromFavorites(comic_info_index);
-
-                            comicInfo.isFavorite = active;
-                        }
-                    }
-
-                    InfoRating {
-                        Layout.alignment: Qt.AlignTop
-                        Layout.rightMargin: 30
-                        rating: comicInfo ? comicInfo.rating ?? 0 : 0
-                    enabled: comicInfo ? comicInfo.canSetReadState ?? true : true
-
-                        onRatingChangedByUser: {
-                            comicInfo.rating = rating;
-                            comicInfoHelper.rate(comic_info_index, rating);
-                        }
-                    }
-                }
-            }
-
-            Flow {
-                spacing: 0
-
-                Layout.fillWidth: true
                 Text {
-                    id: volume
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.volume ?? "" : ""
-                    rightPadding: 20
-                    visible: comicInfo ? comicInfo.volume ?? false : false
-                }
-
-                Text {
-                    id: numbering
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: (comicInfo ? comicInfo.number ?? "" : "") + "/" + (comicInfo ? comicInfo.count ?? "" : "")
-                    rightPadding: 20
-                    visible : comicInfo ? comicInfo.number ?? false : false
-                }
-
-                Text {
-                    id: arc
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.getStoryArcInfoString() : ""
-                    rightPadding: 20
-                    visible : comicInfo ? comicInfo.getStoryArcInfoString().length : false
-                }
-
-                Text {
-                    id: alternate
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.getAlternateSeriesString() : ""
-                    rightPadding: 20
-                    visible : comicInfo ? comicInfo.getAlternateSeriesString().length : false
-                }
-
-                Text {
-                    id: seriesGroup
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.seriesGroup ?? "" : ""
-                    rightPadding: 20
-                    visible: comicInfo ? comicInfo.seriesGroup ?? false : false
-                }
-
-                Text {
-                    id: genre
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.genere ?? "" : ""
-                    rightPadding: 20
-                    visible: comicInfo ? comicInfo.genere ?? false : false
-                }
-
-                Text {
-                    id: date
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.date ?? "" : ""
-                    rightPadding: 20
-                    visible: comicInfo ? comicInfo.date ?? false : false
-                }
-
-                Text {
-                    id: pages
-                    color: infoColor
-                    font: mainContainer.infoFont
-                    text: comicInfo ? comicInfo.numPages ?? "" : "" + " pages"
-                    rightPadding: 20
-                    visible: comicInfo ? comicInfo.numPages ?? false : false
-                }
-
-                Text {
-                    id: showInComicVine
-                    font: mainContainer.infoFont
-                    color: themeLinkColor
-                    text: "Show in Comic Vine"
-                    visible: comicInfo ? comicInfo.comicVineID ?? false : false
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            Qt.openUrlExternally("http://www.comicvine.com/comic/4000-%1/".arg(comicInfo ? comicInfo.comicVineID ?? "" : ""));
-                        }
-                    }
-                }
-            }
-
-            Text {
-                Layout.topMargin: 22
-                Layout.rightMargin: 30
-                Layout.bottomMargin: 5
-                Layout.fillWidth: true
-
-                id: sinopsis
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 15
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignJustify
-                text: '<html><head><style>a { color: ' + themeLinkColorStr + '; text-decoration: none; }</style></head><body>' + (comicInfo ? comicInfo.synopsis ?? "" : "") + '</body></html>'
-                visible: comicInfo ? comicInfo.synopsis ?? false : false
-                textFormat: Text.RichText
-            }
-
-            Text {
-                Layout.topMargin: 25
-                Layout.bottomMargin: 5
-
-                id: characters_title
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 18
-                font.bold: true
-
-                text: qsTr("Characters")
-
-                visible: comicInfo ? comicInfo.getCharacters().length > 0 : false
-            }
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: 20
-                Repeater {
-                    id: characters
-                    model: comicInfo ? comicInfo.getCharacters().length : null
-
-                    Text {
-                        color: infoTextColor
-                        font.family: "Arial"
-                        font.pixelSize: 15
-
-                        text: comicInfo ? comicInfo.getCharacters()[index] : ""
-                    }
-                }
-            }
-
-            Text {
-                Layout.topMargin: 25
-                Layout.bottomMargin: 5
-
-                id: main_character_or_team_title
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 18
-                font.bold: true
-
-                text: qsTr("Main character or team")
-
-                visible: comicInfo && comicInfo.mainCharacterOrTeam ? comicInfo.mainCharacterOrTeam.length > 0 : false
-            }
-
-            Text {
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 15
-
-                text: comicInfo && comicInfo.mainCharacterOrTeam ? comicInfo.mainCharacterOrTeam : ""
-
-                visible: comicInfo && comicInfo.mainCharacterOrTeam ? comicInfo.mainCharacterOrTeam.length > 0 : false
-            }
-
-            Text {
-                Layout.topMargin: 25
-                Layout.bottomMargin: 5
-
-                id: teams_title
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 18
-                font.bold: true
-
-                text: qsTr("Teams")
-
-                visible: comicInfo ? comicInfo.getTeams().length > 0 : false
-            }
-
-
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: 20
-                Repeater {
-                    id: teams
-                    model: comicInfo ? comicInfo.getTeams().length : null
-
-                    Text {
-                        color: infoTextColor
-                        font.family: "Arial"
-                        font.pixelSize: 15
-
-                        text: comicInfo ? comicInfo.getTeams()[index] : ""
-                    }
-                }
-            }
-
-            Text {
-                Layout.topMargin: 25
-                Layout.bottomMargin: 5
-
-                id: locations_title
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 18
-                font.bold: true
-
-                text: qsTr("Locations")
-
-                visible: comicInfo ? comicInfo.getLocations().length > 0 : false
-            }
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: 20
-                Repeater {
-                    id: locations
-                    model: comicInfo ? comicInfo.getLocations().length : null
-
-                    Text {
-                        color: infoTextColor
-                        font.family: "Arial"
-                        font.pixelSize: 15
-
-                        text: comicInfo ? comicInfo.getLocations()[index] : ""
-                    }
-                }
-            }
-
-            Text {
-                Layout.topMargin: 25
-                Layout.bottomMargin: 5
-
-                id: authors_title
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 18
-                font.bold: true
-
-                text: qsTr("Authors")
-
-                visible: comicInfo ? (comicInfo.getWriters().length +
-                                      comicInfo.getPencillers().length +
-                                      comicInfo.getInkers().length +
-                                      comicInfo.getColorists().length +
-                                      comicInfo.getLetterers().length +
-                                      comicInfo.getCoverArtists().length +
-                                      comicInfo.getEditors().length +
-                                      comicInfo.getImprint().length > 0) : false
-            }
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: 20
-                Repeater {
-                    id: writers
-                    model: comicInfo ? comicInfo.getWriters().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getWriters()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("writer")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: pencilllers
-                    model: comicInfo ? comicInfo.getPencillers().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getPencillers()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("penciller")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: inkers
-                    model: comicInfo ? comicInfo.getInkers().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getInkers()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("inker")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: colorist
-                    model: comicInfo ? comicInfo.getColorists().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getColorists()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("colorist")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: letterers
-                    model: comicInfo ? comicInfo.getLetterers().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getLetterers()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("letterer")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: cover_artist
-                    model: comicInfo ? comicInfo.getCoverArtists().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getCoverArtists()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("cover artist")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: editors
-                    model: comicInfo ? comicInfo.getEditors().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getEditors()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("editor")
-                        }
-                    }
-                }
-
-                Repeater {
-                    id: imprint
-                    model: comicInfo ? comicInfo.getImprint().length : null
-                    Column{
-                        Text {
-                            color: infoTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 15
-
-                            text: comicInfo ? comicInfo.getImprint()[index] : ""
-                        }
-
-                        Text {
-                            color: infoMetadataTextColor
-                            font.family: "Arial"
-                            font.pixelSize: 13
-                            font.italic: true
-                            text: qsTr("imprint")
-                        }
-                    }
-                }
-            }
-
-            Text {
-                Layout.topMargin: 25
-
-                id: publisher_title
-                color: infoTextColor
-                font.family: "Arial"
-                font.pixelSize: 18
-                font.bold: true
-
-                text: qsTr("Publisher")
-
-                visible: publisher.visible || format.visible || color.visible || age_rating.visible
-            }
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: 20
-
-                Text {
-                    id: publisher
-
-                    color: infoTextColor
-                    font.family: "Arial"
+                    objectName: "detailTranslatedTitle"
+                    Layout.fillWidth: true
+                    text: mainContainer.infoObject ? mainContainer.infoObject.metadata.translatedTitle ?? "" : ""
+                    visible: text.length > 0
+                    textFormat: Text.PlainText
+                    color: infoMetadataTextColor
                     font.pixelSize: 15
-
-                    text: comicInfo ? comicInfo.publisher ?? "" : ""
-
-                    visible: comicInfo ? comicInfo.publisher ?? false : false
+                    wrapMode: Text.Wrap
                 }
-
-                Text {
-                    id: format
-
-                    color: infoTextColor
-                    font.family: "Arial"
-                    font.pixelSize: 15
-
-                    text: comicInfo ? comicInfo.format ?? "" : ""
-
-                    visible: comicInfo ? comicInfo.format ?? false : false
-                }
-
-                Text {
-                    id: type
-
-                    color: infoTextColor
-                    font.family: "Arial"
-                    font.pixelSize: 15
-
-                    text: comicInfo ? comicInfo.getTypeString() : ""
-
-                    visible: comicInfo ? comicInfo.getTypeString() : false
-                }
-
-                Text {
-                    id: color
-
-                    color: infoTextColor
-                    font.family: "Arial"
-                    font.pixelSize: 15
-
-                    text: (comicInfo ? comicInfo.color : false) ? qsTr("color") : qsTr("b/w")
-
-                    visible: comicInfo ? comicInfo.color ?? false : false
-                }
-
-                Text {
-                    id: language
-
-                    color: infoTextColor
-                    font.family: "Arial"
-                    font.pixelSize: 15
-
-                    text: comicInfo && comicInfo.languageISO ? comicInfo.languageISO : ""
-
-                    visible: comicInfo && comicInfo.languageISO ? comicInfo.languageISO.length > 0 ?? false : false
-                }
-
-                Text {
-                    id: age_rating
-
-                    color: infoTextColor
-                    font.family: "Arial"
-                    font.pixelSize: 15
-
-                    text: comicInfo ? comicInfo.ageRating ?? "" : ""
-
-                    visible: comicInfo ? comicInfo.ageRating ?? false : false
+            }
+            InfoFavorites {
+                objectName: "detailFavorite"
+                Layout.alignment: Qt.AlignTop
+                Layout.topMargin: 4
+                active: mainContainer.infoObject ? mainContainer.infoObject.isFavorite : false
+                enabled: mainContainer.infoObject ? mainContainer.infoObject.available : false
+                onActiveChangedByUser: function(active) {
+                    // The model refreshes the current object after the write.
+                    // Do not access mainContainer.infoObject after the helper returns.
+                    if (active)
+                        comicInfoHelper.addToFavorites(mainContainer.sourceIndex);
+                    else
+                        comicInfoHelper.removeFromFavorites(mainContainer.sourceIndex);
                 }
             }
         }
 
-        Item {
-            Layout.fillHeight: true
+        Flow {
             Layout.fillWidth: true
-            Layout.minimumWidth: 0
-            Layout.preferredWidth: 0
+            spacing: 14
+            InfoRating {
+                objectName: "detailRating"
+                height: 28
+                rating: mainContainer.infoObject ? mainContainer.infoObject.rating : 0
+                enabled: mainContainer.infoObject ? mainContainer.infoObject.canSetReadState : false
+                onRatingChangedByUser: function(rating) {
+                    comicInfoHelper.rate(mainContainer.sourceIndex, rating === mainContainer.infoObject.rating ? 0 : rating);
+                }
+            }
+            Button {
+                objectName: "detailRead"
+                height: 28
+                text: mainContainer.infoObject && mainContainer.infoObject.read ? qsTr("Read") : qsTr("Unread")
+                enabled: mainContainer.infoObject ? mainContainer.infoObject.canSetReadState : false
+                onClicked: comicInfoHelper.setRead(mainContainer.sourceIndex, !mainContainer.infoObject.read)
+                contentItem: Text {
+                    text: parent.text
+                    color: infoTextColor
+                    font.pixelSize: 14
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Rectangle {
+                    color: parent.down ? Qt.rgba(infoTextColor.r, infoTextColor.g, infoTextColor.b, 0.12) : "transparent"
+                    border.color: Qt.rgba(infoTextColor.r, infoTextColor.g, infoTextColor.b, 0.2)
+                    radius: 4
+                }
+            }
+            Text {
+                objectName: "detailProgress"
+                height: 28
+                verticalAlignment: Text.AlignVCenter
+                color: infoMetadataTextColor
+                font.pixelSize: 14
+                visible: mainContainer.infoObject ? mainContainer.infoObject.canSetReadState && Number(mainContainer.infoObject.numPages) > 0 : false
+                text: !mainContainer.infoObject ? "" : mainContainer.infoObject.hasBeenOpened || mainContainer.infoObject.currentPage > 0
+                      ? qsTr("Page %1 / %2").arg(Math.max(0, Math.min(mainContainer.infoObject.currentPage, Number(mainContainer.infoObject.numPages)))).arg(mainContainer.infoObject.numPages)
+                      : qsTr("Not started · %1 pages").arg(mainContainer.infoObject.numPages)
+            }
+        }
+
+        Flow {
+            id: fieldsFlow
+            Layout.fillWidth: true
+            spacing: 12
+            Repeater {
+                model: mainContainer.rows
+                delegate: RowLayout {
+                    id: fieldRow
+                    required property var modelData
+                    objectName: "detailRow_" + modelData.key
+                    width: mainContainer.compact && fieldsFlow.width >= 520 && modelData.compactHalf
+                           ? (fieldsFlow.width - fieldsFlow.spacing) / 2 : fieldsFlow.width
+                    spacing: 16
+                    Text {
+                        Layout.preferredWidth: mainContainer.labelWidth
+                        Layout.alignment: Qt.AlignTop
+                        Layout.topMargin: 4
+                        text: fieldRow.modelData.label
+                        textFormat: Text.PlainText
+                        color: infoMetadataTextColor
+                        font.pixelSize: 14
+                        wrapMode: Text.Wrap
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        spacing: 3
+                        Flow {
+                            id: valueFlow
+                            Layout.fillWidth: true
+                            visible: fieldRow.modelData.chipField.length > 0
+                            spacing: 7
+                            Repeater {
+                                model: fieldRow.modelData.chipField.length > 0
+                                       ? (mainContainer.compact && fieldRow.modelData.compactLimit > 0 && !mainContainer.expandedFields[fieldRow.modelData.key]
+                                          ? fieldRow.modelData.values.slice(0, fieldRow.modelData.compactLimit) : fieldRow.modelData.values) : []
+                                delegate: Rectangle {
+                                    id: chip
+                                    required property string modelData
+                                    readonly property var colors: {
+                                        mainContainer.colorRevision;
+                                        return metadataChipColors.colorsForField(fieldRow.modelData.chipField, modelData);
+                                    }
+                                    width: Math.min(valueFlow.width, Math.ceil(chipText.implicitWidth) + 24)
+                                    height: chipText.contentHeight + 10
+                                    color: colors.background
+                                    border.color: Qt.rgba(0, 0, 0, 0.1)
+                                    radius: 7
+                                    Text {
+                                        id: chipText
+                                        width: Math.max(0, parent.width - 24)
+                                        anchors.centerIn: parent
+                                        text: chip.modelData
+                                        textFormat: Text.PlainText
+                                        color: chip.colors.foreground
+                                        font.pixelSize: 14
+                                        horizontalAlignment: Text.AlignHCenter
+                                        wrapMode: Text.Wrap
+                                    }
+                                }
+                            }
+                        }
+                        Button {
+                            objectName: "detailTagsToggle"
+                            visible: mainContainer.compact && fieldRow.modelData.compactLimit > 0 && fieldRow.modelData.values.length > fieldRow.modelData.compactLimit
+                            text: mainContainer.expandedFields[fieldRow.modelData.key] ? qsTr("Collapse") : qsTr("+%1 more").arg(fieldRow.modelData.values.length - fieldRow.modelData.compactLimit)
+                            onClicked: {
+                                let fields = Object.assign({}, mainContainer.expandedFields);
+                                fields[fieldRow.modelData.key] = !fields[fieldRow.modelData.key];
+                                mainContainer.expandedFields = fields;
+                            }
+                            flat: true
+                            padding: 0
+                            contentItem: Text {
+                                text: parent.text
+                                color: infoMetadataTextColor
+                                font.pixelSize: 13
+                            }
+                            background: Item { }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: fieldRow.modelData.chipField.length === 0
+                            text: fieldRow.modelData.values.join("、")
+                            textFormat: Text.PlainText
+                            color: infoTextColor
+                            font.pixelSize: 14
+                            wrapMode: Text.Wrap
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: text.length > 0
+                            text: fieldRow.modelData.note
+                            textFormat: Text.PlainText
+                            color: infoMetadataTextColor
+                            font.pixelSize: 12
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+            }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            visible: mainContainer.rows.length === 0 && mainContainer.badges.length === 0
+            text: qsTr("No comic information entered")
+            color: infoMetadataTextColor
+            font.pixelSize: 14
+            wrapMode: Text.Wrap
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            visible: mainContainer.badges.length > 0
+            spacing: 8
+            Repeater {
+                model: mainContainer.badges
+                delegate: Rectangle {
+                    required property string modelData
+                    width: Math.min(parent.width, statusText.implicitWidth + 18)
+                    height: statusText.contentHeight + 8
+                    radius: 4
+                    color: Qt.rgba(infoTextColor.r, infoTextColor.g, infoTextColor.b, 0.07)
+                    Text {
+                        id: statusText
+                        width: Math.max(0, parent.width - 18)
+                        anchors.centerIn: parent
+                        text: parent.modelData
+                        textFormat: Text.PlainText
+                        font.pixelSize: 14
+                        color: infoTextColor
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            visible: mainContainer.showFileInformation
+            Layout.fillWidth: true
+            height: 1
+            color: Qt.rgba(infoTextColor.r, infoTextColor.g, infoTextColor.b, 0.15)
+        }
+        Button {
+            objectName: "detailFileToggle"
+            visible: mainContainer.showFileInformation
+            Layout.fillWidth: true
+            text: (mainContainer.fileExpanded ? "▾  " : "▸  ") + qsTr("File information")
+                  + (Number(mainContainer.file.pages) > 0 ? " · " + qsTr("%1 pages").arg(mainContainer.file.pages) : "")
+                  + (mainContainer.file.size ? " · " + mainContainer.file.size : "")
+            onClicked: mainContainer.fileExpanded = !mainContainer.fileExpanded
+            background: Item { }
+            padding: 0
+            contentItem: Text {
+                text: parent.text
+                textFormat: Text.PlainText
+                color: infoMetadataTextColor
+                font.pixelSize: 14
+                wrapMode: Text.Wrap
+            }
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: mainContainer.showFileInformation && mainContainer.fileExpanded
+            spacing: 6
+            Repeater {
+                model: [ { label: qsTr("Filename"), value: mainContainer.file.name ?? "" },
+                         { label: qsTr("Location"), value: mainContainer.file.path ?? "" } ]
+                delegate: Text {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    visible: modelData.value.length > 0
+                    text: modelData.label + ": " + modelData.value
+                    textFormat: Text.PlainText
+                    color: infoMetadataTextColor
+                    font.pixelSize: 12
+                    wrapMode: Text.Wrap
+                }
+            }
         }
     }
 }

@@ -24,6 +24,20 @@ public:
     explicit SidebarSectionHeader(QSplitterHandle *handle) : QWidget(handle), handle(handle) { }
 
 protected:
+    bool event(QEvent *event) override
+    {
+        const bool handled = QWidget::event(event);
+        if (event->type() == QEvent::LayoutRequest) {
+            auto *splitter = qobject_cast<QSplitter *>(handle->parentWidget());
+            int required = 39;
+            for (int i = 1; splitter && i < splitter->count(); ++i)
+                if (const auto *layout = splitter->handle(i)->layout())
+                    required = qMax(required, layout->totalMinimumSize().height());
+            if (splitter && splitter->handleWidth() != required)
+                splitter->setHandleWidth(required);
+        }
+        return handled;
+    }
     void mousePressEvent(QMouseEvent *event) override { forward(event); }
     void mouseMoveEvent(QMouseEvent *event) override { forward(event); }
     void mouseReleaseEvent(QMouseEvent *event) override { forward(event); }
@@ -120,12 +134,11 @@ YACReaderSideBar::YACReaderSideBar(QWidget *parent)
     // END FOLDERS------------------------------------------------------
 
     // FILTERS: its header lives in the splitter handle so the whole row is draggable.
-    filterPanel = new MetadataFilterPanel(this);
+    filterPanel = new MetadataFilterPanel(this, MetadataFilterPanel::Host::Sidebar);
     splitter->addWidget(filterPanel);
     splitter->addWidget(readingListsView);
-    foldersContainer->setMinimumHeight(96);
-    filterPanel->setMinimumHeight(280);
-    readingListsView->setMinimumHeight(120);
+    foldersContainer->setMinimumHeight(64);
+    readingListsView->setMinimumHeight(64);
     splitter->setChildrenCollapsible(false);
     splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 2);
@@ -199,7 +212,7 @@ void YACReaderSideBar::closeEvent(QCloseEvent *event)
 
 QSize YACReaderSideBar::sizeHint() const
 {
-    return QSize(275, 200);
+    return QSize(320, 200);
 }
 
 void YACReaderSideBar::applyTheme(const Theme &theme)

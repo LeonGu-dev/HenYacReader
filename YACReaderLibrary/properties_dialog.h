@@ -57,6 +57,7 @@ private:
     bool applyCoverChange(ComicRecord &record, StagedCover &staged);
     bool showRecord(int index, int step);
     bool updateComics();
+    void renameArchive(const QString &filename);
 
     bool sequentialEditing = false;
     bool coverChanged = false;

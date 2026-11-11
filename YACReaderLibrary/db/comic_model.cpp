@@ -335,6 +335,8 @@ QVariant columnValue(const ComicItem &item, int column)
         return metadata.title;
     case ComicModel::Favorite:
         return metadata.favorite.toBool();
+    case ComicModel::Convention:
+        return metadata.convention;
     case ComicModel::Author:
         return metadata.writer;
     case ComicModel::Work:
@@ -751,14 +753,14 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
         return identityValue(item, role);
 
     if (role == ChipValuesRole) {
-        if (index.column() == Work)
-            return value(Work).toString().trimmed().isEmpty() ? QStringList() : QStringList { value(Work).toString().trimmed() };
+        if (index.column() == Work || index.column() == Convention)
+            return value(index.column()).toString().trimmed().isEmpty() ? QStringList() : QStringList { value(index.column()).toString().trimmed() };
         if (index.column() == Characters || index.column() == Tags)
             return value(index.column()).toString().split('\n', Qt::SkipEmptyParts);
         return QStringList();
     }
     if (role == Qt::ToolTipRole) {
-        if (index.column() == Work || index.column() == Characters || index.column() == Tags)
+        if (index.column() == Convention || index.column() == Work || index.column() == Characters || index.column() == Tags)
             return data(index, ChipValuesRole).toStringList().join('\n');
         if (index.column() == Author)
             return value(Author).toString();
@@ -844,6 +846,8 @@ QVariant ComicModel::headerData(int section, Qt::Orientation orientation,
             return QVariant(QString(tr("Read")));
         case ComicModel::CurrentPage:
             return tr("Reading progress");
+        case ComicModel::Convention:
+            return tr("Convention");
         case ComicModel::Author:
             return tr("Author");
         case ComicModel::Favorite:
@@ -868,6 +872,8 @@ QVariant ComicModel::headerData(int section, Qt::Orientation orientation,
 
     if (orientation == Qt::Horizontal && role == Qt::TextAlignmentRole) {
         switch (section) {
+        case ComicModel::Favorite:
+            return QVariant(Qt::AlignCenter);
         case ComicModel::Number:
             return QVariant(Qt::AlignRight | Qt::AlignVCenter);
         case ComicModel::NumPages:
@@ -1145,7 +1151,8 @@ QList<ComicItem> ComicModel::createReadingModelData(const QString &databasePath)
         selectQuery.prepare("SELECT " + ComicDB::selectList("c", "ci") + " "
                                                                          "FROM comic c INNER JOIN comic_info ci ON (c.comicInfoId = ci.id) "
                                                                          "WHERE ci.hasBeenOpened = 1 AND ci.read = 0 "
-                                                                         "ORDER BY ci.lastTimeOpened DESC LIMIT " + QString::number(readingNowLimit));
+                                                                         "ORDER BY ci.lastTimeOpened DESC LIMIT " +
+                            QString::number(readingNowLimit));
         selectQuery.exec();
 
         modelData = ComicItems::fromQuery(selectQuery);
@@ -1405,16 +1412,16 @@ QMap<int, QStringList> ComicModel::metadataFilterValues() const
         auto db = DataBaseManagement::loadDatabase(_databasePath);
         connection = db.connectionName();
         QSqlQuery query(db);
-        if (query.exec("SELECT DISTINCT tags, work, writer FROM comic_info WHERE id IN (SELECT comicInfoId FROM comic)")) {
+        if (query.exec("SELECT DISTINCT tags, work, writer, convention, seriesName FROM comic_info WHERE id IN (SELECT comicInfoId FROM comic)")) {
             while (query.next())
-                for (int i = 0; i < 3; ++i)
+                for (int i = 0; i < 5; ++i)
                     for (const auto &value : MetadataFilter::values(query.value(i)))
                         unique[i].insert(value);
         }
     }
     QSqlDatabase::removeDatabase(connection);
     QMap<int, QStringList> result;
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 5; ++i) {
         result[i] = unique[i].values();
         result[i].sort(Qt::CaseInsensitive);
     }
@@ -2296,7 +2303,7 @@ QString ComicModel::localizedDate(const QString &dbDate) const
 
 QList<int> ComicModel::visibleColumns()
 {
-    return { Favorite, Title, FileName, Author, Work, Characters, Tags, Color, Censorship, Translation, CurrentPage, ReadColumn, Rating, Size };
+    return { Favorite, Convention, Title, FileName, Author, Work, Characters, Tags, Color, Censorship, Translation, CurrentPage, ReadColumn, Rating, Size };
 }
 
 bool ComicModel::isSortableColumn(int column)

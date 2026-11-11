@@ -1530,7 +1530,7 @@ void ComicModelTest::mangaTableShowsOnlyTheConfirmedColumns()
 {
     ComicModel model;
     QCOMPARE(model.columnCount(), int(ComicModel::ColumnCount));
-    QCOMPARE(ComicModel::visibleColumns().size(), 14);
+    QCOMPARE(ComicModel::visibleColumns().size(), 15);
     for (int column = 0; column < model.columnCount(); ++column)
         QCOMPARE(!model.headerData(column, Qt::Horizontal).toString().isEmpty(), ComicModel::visibleColumns().contains(column));
     QVERIFY(!ComicModel::visibleColumns().contains(ComicModel::Number));
@@ -1541,10 +1541,11 @@ void ComicModelTest::mangaTableShowsOnlyTheConfirmedColumns()
 
 void ComicModelTest::mangaMetadataColumnsAndProgress()
 {
-    QVERIFY(exec("UPDATE comic_info SET writer='Author A' || char(10) || 'Author B', isAnthology=1, work='Work A', characters='Hero A' || char(10) || 'Hero B', tags='Tag A' || char(10) || 'Tag B', color=NULL, censorship='uncensored', translationStatus='ai' WHERE id=1"));
+    QVERIFY(exec("UPDATE comic_info SET writer='Author A' || char(10) || 'Author B', isAnthology=1, convention='C107', work='Work A', characters='Hero A' || char(10) || 'Hero B', tags='Tag A' || char(10) || 'Tag B', color=NULL, censorship='uncensored', translationStatus='ai' WHERE id=1"));
     ComicModel model;
     model.setupFolderModelData(2, dataPath);
     const auto row = model.getIndexFromId(1).row();
+    QCOMPARE(model.index(row, ComicModel::Convention).data(ComicModel::ChipValuesRole).toStringList(), QStringList({ "C107" }));
     QCOMPARE(model.index(row, ComicModel::Author).data().toString(), QString("Author A | Author B"));
     QCOMPARE(model.index(row, ComicModel::Author).data(Qt::ToolTipRole).toString(), QString("Author A\nAuthor B"));
     QCOMPARE(model.index(row, ComicModel::Work).data(ComicModel::ChipValuesRole).toStringList(), QStringList({ "Work A" }));
@@ -1744,6 +1745,7 @@ void ComicModelTest::publicationTypeIsAnIndependentOptionalFilter()
     QVERIFY(exec("UPDATE comic_info SET publicationType='doujinshi' WHERE id=1"));
     QVERIFY(exec("UPDATE comic_info SET publicationType='tankobon' WHERE id=2"));
     QVERIFY(exec("UPDATE comic_info SET publicationType='magazine', tags='daily' WHERE id=3"));
+    QVERIFY(exec("UPDATE comic_info SET publicationType='artbook' WHERE id=4"));
     ComicModel model;
     model.setupFolderModelData(2, dataPath);
     MetadataFilter filter;
@@ -1753,6 +1755,9 @@ void ComicModelTest::publicationTypeIsAnIndependentOptionalFilter()
     filter.publicationType = "tankobon";
     model.setMetadataFilter(filter);
     QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 2 }));
+    filter.publicationType = "artbook";
+    model.setMetadataFilter(filter);
+    QCOMPARE(comicInfoIds(model), QList<qulonglong>({ 4 }));
     filter.publicationType = "magazine";
     filter.tags = { "daily", "other" };
     model.setMetadataFilter(filter);

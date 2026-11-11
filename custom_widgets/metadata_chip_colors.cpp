@@ -22,6 +22,10 @@ QString MetadataChipColors::key(int column, const QString &value)
     const auto field = column == ComicModel::Work ? QStringLiteral("work") : column == ComicModel::Characters ? QStringLiteral("character")
             : column == ComicModel::Tags                                                                      ? QStringLiteral("tag")
             : column == ComicModel::Author                                                                    ? QStringLiteral("author")
+            : column == ComicModel::Convention                                                                ? QStringLiteral("convention")
+            : column == -2                                                                                    ? QStringLiteral("circle")
+            : column == -4                                                                                    ? QStringLiteral("seriesName")
+            : column == -3                                                                                    ? QStringLiteral("translator")
                                                                                                               : QString();
     if (field.isEmpty() || value.isEmpty())
         return { };
@@ -83,4 +87,25 @@ void MetadataChipColors::reload()
     settingsPath.clear();
     loadProfile();
     emit colorsChanged();
+}
+
+QVariantMap MetadataChipColors::colorsForField(const QString &field, const QString &value)
+{
+    const auto background = color(columnForField(field), value);
+    return { { "background", background }, { "foreground", foregroundColor(background) } };
+}
+
+int MetadataChipColors::columnForField(const QString &field)
+{
+    static const QHash<QString, int> columns {
+        { "work", ComicModel::Work },
+        { "character", ComicModel::Characters },
+        { "tag", ComicModel::Tags },
+        { "author", ComicModel::Author },
+        { "convention", ComicModel::Convention },
+        { "circle", -2 },
+        { "translator", -3 },
+        { "seriesName", -4 },
+    };
+    return columns.value(field, -1);
 }

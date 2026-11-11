@@ -30,11 +30,11 @@ void YACReaderComicInfoHelper::setRead(int index, bool read)
 void YACReaderComicInfoHelper::addToFavorites(int index)
 {
     if (model != nullptr)
-        model->addComicsToFavorites(QModelIndexList() << model->index(index, 0));
+        model->setFavorite(model->index(index, 0), true);
 }
 
 void YACReaderComicInfoHelper::removeFromFavorites(int index)
 {
     if (model != nullptr)
-        model->deleteComicsFromFavorites(QModelIndexList() << model->index(index, 0));
+        model->setFavorite(model->index(index, 0), false);
 }

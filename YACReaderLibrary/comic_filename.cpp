@@ -73,6 +73,8 @@ ComicFilename::Parsed ComicFilename::parse(const QString &fileName)
     }
     bool translated = false;
     for (auto &group : groups) {
+        if (group.used)
+            continue;
         const auto value = group.value;
         if (value.contains(QRegularExpression(QStringLiteral("^(無修正|无修正|無修|无修|uncensored)$"), QRegularExpression::CaseInsensitiveOption))) {
             result.metadata.set(&M::censorship, "uncensored");
@@ -90,6 +92,17 @@ ComicFilename::Parsed ComicFilename::parse(const QString &fileName)
         } else if (value == QStringLiteral("黑白") || value == QStringLiteral("白黒")) {
             result.metadata.set(&M::color, false);
             group.used = true;
+        }
+    }
+    // An event precedes the creator; trailing parentheses still identify the work.
+    // Recognized status markers and nested circle/author groups retain their roles.
+    if (!groups.isEmpty()) {
+        auto &first = groups.first();
+        const bool knownEvent = first.value.contains(QRegularExpression(QStringLiteral("^(C[0-9]+|COMIC[0-9]+|コミケ.*|.*例大祭.*)$"), QRegularExpression::CaseInsensitiveOption));
+        const bool beforeCreator = groups.size() > 1 && groups[1].beforeTitle && !groups[1].used;
+        if (first.round && first.beforeTitle && !first.used && text.left(first.start).trimmed().isEmpty() && !first.value.isEmpty() && !first.value.contains(QRegularExpression("[\\[\\]()]")) && (knownEvent || beforeCreator)) {
+            result.metadata.set(&M::convention, first.value);
+            first.used = true;
         }
     }
     // Status tags may precede the creator, but title suffixes are not authors.
@@ -162,6 +175,9 @@ ComicFilename::Parsed ComicFilename::parse(const QString &fileName)
 QString ComicFilename::generate(const DescriptiveComicMetadata &metadata)
 {
     QStringList parts;
+    const auto convention = safe(metadata.convention.toString());
+    if (!convention.isEmpty())
+        parts << '(' + convention + ')';
     auto authors = metadata.writer.toString().split('\n', Qt::SkipEmptyParts);
     for (auto &author : authors)
         author = safe(author);

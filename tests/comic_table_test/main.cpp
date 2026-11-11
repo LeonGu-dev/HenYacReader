@@ -61,6 +61,7 @@ private slots:
     void filterPanelClicksSearchAndTheme();
     void favoriteHeartClicksPersistAndShareAcrossFiles();
     void oldHeaderKeepsWidthsWhenHeartIsAdded();
+    void conventionDefaultFitsTypicalEventAndKeepsCustomWidths();
 
 private:
     std::unique_ptr<QTemporaryDir> profiles;
@@ -96,6 +97,11 @@ public:
     QStringList text;
     QRectF lastChip;
     bool textExceedsItsBox = false;
+    struct TextBounds {
+        QRectF chip;
+        qreal left, right;
+    };
+    QList<TextBounds> bounds;
     bool begin(QPaintDevice *) override { return true; }
     bool end() override { return true; }
     Type type() const override { return QPaintEngine::User; }
@@ -105,6 +111,14 @@ public:
     void drawTextItem(const QPointF &point, const QTextItem &item) override
     {
         text.append(item.text());
+        if (!lastChip.isEmpty()) {
+            if (bounds.isEmpty() || bounds.last().chip != lastChip)
+                bounds.append({ lastChip, point.x(), point.x() + item.width() });
+            else {
+                bounds.last().left = qMin(bounds.last().left, point.x());
+                bounds.last().right = qMax(bounds.last().right, point.x() + item.width());
+            }
+        }
         if (!lastChip.isEmpty() && point.x() + item.width() > lastChip.right() - 7 + 0.01)
             textExceedsItsBox = true;
     }
@@ -428,6 +442,7 @@ void ComicTableTest::chipTextFitsWithoutUnnecessaryElision_data()
         { "11223344556677889900" },
         { "WWW.123456789" },
         { "English tag 2026" },
+        { "c102", "c108" },
         { QStringLiteral("中文English123混合") },
         { QStringLiteral("日常"), "lolicontent", "11223344556677889900" },
     };
@@ -457,6 +472,8 @@ void ComicTableTest::chipTextFitsWithoutUnnecessaryElision()
     painter.end();
     QCOMPARE(device.engine.text.join(QString()), values.join(QString()));
     QVERIFY2(!device.engine.textExceedsItsBox, "The rendered text does not fit inside its allocated chip text box");
+    for (const auto &bounds : device.engine.bounds)
+        QVERIFY2(qAbs((bounds.left + bounds.right) / 2 - bounds.chip.center().x()) <= 0.75, "Text must be centered inside the painted chip");
 }
 
 void ComicTableTest::chipMeasurementUsesTheActualPaintFont()
@@ -523,6 +540,8 @@ void ComicTableTest::renderTable()
                     : row == 2                                                  ? QStringLiteral("午后短篇集")
                                                                                 : QStringLiteral("另一场冒险"));
         put(ComicModel::FileName, QStringLiteral("[示例社团 (作者甲)] 漫画标题 (示例作品) [中国翻訳].zip"));
+        put(ComicModel::Convention, row % 2 ? QStringLiteral("例大祭") : QStringLiteral("C107"));
+        model.setData(model.index(row, ComicModel::Convention), QStringList { model.index(row, ComicModel::Convention).data().toString() }, ComicModel::ChipValuesRole);
         put(ComicModel::Author, row == 2 ? QStringLiteral("作者甲 | 作者乙") : QStringLiteral("作者甲"));
         put(ComicModel::Work, row == 1 ? QStringLiteral("原创") : QStringLiteral("示例作品"));
         put(ComicModel::Characters, QStringLiteral("角色甲 | 角色乙 | 另一个长名称的角色"));
@@ -631,18 +650,20 @@ void ComicTableTest::filterPanelClicksSearchAndTheme()
     QCOMPARE(model.rowCount(), 1);
     logic->click();
     QVERIFY(!model.metadataFilter().matchAll);
-    auto *choices = panel.findChild<QWidget *>("metadataFilterChoices");
+    auto *choices = panel.findChild<QWidget *>("metadataFilterChoicesScroll");
     QVERIFY(choices);
     QVERIFY(choices->geometry().bottom() < search->geometry().top());
-    auto *tabs = panel.findChild<QTabWidget *>();
+    auto *tabs = panel.findChild<MetadataFilterTabs *>();
     QVERIFY(tabs);
-    QCOMPARE(tabs->count(), 4);
+    QCOMPARE(tabs->count(), 6);
     auto *bar = tabs->findChild<QTabBar *>();
     QVERIFY(bar);
-    QVERIFY(qAbs(bar->width() - tabs->width()) <= 2);
+    QCOMPARE(bar->elideMode(), Qt::ElideRight);
+    QVERIFY(!bar->usesScrollButtons());
+    QVERIFY(bar->width() >= tabs->findChild<QScrollArea *>("metadataFilterTabViewport")->width());
     QVERIFY(qAbs(bar->tabRect(0).width() - bar->tabRect(3).width()) <= 1);
     model.updateRating(5, model.index(0, 0));
-    tabs->setCurrentIndex(3);
+    tabs->setCurrentIndex(5);
     auto *fiveStars = panel.findChild<QAbstractButton *>("metadataFilterRating5");
     auto *fourStars = panel.findChild<QAbstractButton *>("metadataFilterRating4");
     QVERIFY(fiveStars && fourStars);
@@ -667,7 +688,16 @@ void ComicTableTest::filterPanelClicksSearchAndTheme()
         QCoreApplication::processEvents();
         if (!preview.isEmpty())
             QVERIFY(translatedPanel.grab().save(preview + "/filter-light.png"));
-        translatedPanel.findChild<QTabWidget *>()->setCurrentIndex(3);
+        if (!preview.isEmpty()) {
+            const auto previousFont = translatedPanel.font();
+            auto largeFont = previousFont;
+            largeFont.setPointSize(14);
+            translatedPanel.setFont(largeFont);
+            QCoreApplication::processEvents();
+            QVERIFY(translatedPanel.grab().save(preview + "/filter-narrow-large-font.png"));
+            translatedPanel.setFont(previousFont);
+        }
+        translatedPanel.findChild<MetadataFilterTabs *>()->setCurrentIndex(5);
         QCoreApplication::processEvents();
         if (!preview.isEmpty())
             QVERIFY(translatedPanel.grab().save(preview + "/filter-rating-light.png"));
@@ -683,6 +713,7 @@ void ComicTableTest::filterPanelClicksSearchAndTheme()
     auto filterBeforeReset = model.metadataFilter();
     filterBeforeReset.matchAll = false;
     filterBeforeReset.works = { "Missing work" };
+    filterBeforeReset.conventions = { "Missing event" };
     filterBeforeReset.authors = { "Missing author" };
     filterBeforeReset.censorship = "censored";
     filterBeforeReset.publicationType = "magazine";
@@ -783,14 +814,57 @@ void ComicTableTest::oldHeaderKeepsWidthsWhenHeartIsAdded()
     oldHeader->moveSection(oldHeader->visualIndex(ComicModel::Title), 1);
     oldHeader->showSection(ComicModel::Title);
     oldHeader->resizeSection(ComicModel::Title, 345);
+    oldHeader->resizeSection(ComicModel::Tags, 178);
     settings.setValue("COMICS_VIEW_HEADERS_MANGA_1", oldHeader->saveState());
+    // Reproduce v1's marker with an old header snapshot: it must still be repaired.
+    settings.setValue("COMICS_VIEW_CONVENTION_COLUMN_ADDED", true);
     QStandardItemModel model(0, ComicModel::ColumnCount);
     QTableView table;
     table.setModel(&model);
     ComicTableLayout::restore(*table.horizontalHeader(), settings);
-    QCOMPARE(displayed(*table.horizontalHeader()), QList<int>({ ComicModel::Favorite, ComicModel::Title }));
+    QCOMPARE(displayed(*table.horizontalHeader()), QList<int>({ ComicModel::Favorite, ComicModel::Convention, ComicModel::Title }));
     QCOMPARE(table.columnWidth(ComicModel::Title), 345);
     QCOMPARE(table.columnWidth(ComicModel::Favorite), 40);
+    // Changing folders/models restores the header again, before the user saves it.
+    ComicTableLayout::restore(*table.horizontalHeader(), settings);
+    QCOMPARE(displayed(*table.horizontalHeader()), QList<int>({ ComicModel::Favorite, ComicModel::Convention, ComicModel::Title }));
+    QCOMPARE(table.horizontalHeader()->visualIndex(ComicModel::Convention), 2);
+    QVERIFY(table.columnWidth(ComicModel::Convention) < 110);
+    QCOMPARE(table.columnWidth(ComicModel::Title), 345);
+    table.setColumnHidden(ComicModel::Convention, true);
+    ComicTableLayout::save(*table.horizontalHeader(), settings);
+    ComicTableLayout::restore(*table.horizontalHeader(), settings);
+    QVERIFY(table.isColumnHidden(ComicModel::Convention));
+    table.setColumnHidden(ComicModel::Tags, false);
+    QCOMPARE(table.columnWidth(ComicModel::Tags), 178);
+}
+
+void ComicTableTest::conventionDefaultFitsTypicalEventAndKeepsCustomWidths()
+{
+    ComicModel metadata;
+    QCOMPARE(metadata.headerData(ComicModel::Favorite, Qt::Horizontal, Qt::TextAlignmentRole).toInt(), int(Qt::AlignCenter));
+    QCOMPARE(metadata.headerData(ComicModel::Title, Qt::Horizontal, Qt::TextAlignmentRole).toInt(), int(Qt::AlignLeft | Qt::AlignVCenter));
+    QTemporaryDir directory;
+    QSettings settings(directory.filePath("compact.ini"), QSettings::IniFormat);
+    QStandardItemModel model(0, ComicModel::ColumnCount);
+    QTableView table;
+    table.setModel(&model);
+    auto *header = table.horizontalHeader();
+    ComicTableLayout::reset(*header);
+    const int compact = table.columnWidth(ComicModel::Convention);
+    QVERIFY(compact < 110);
+    QVERIFY(compact >= table.fontMetrics().horizontalAdvance("c102") + 30);
+    header->resizeSection(ComicModel::Convention, 118);
+    settings.setValue("COMICS_VIEW_CONVENTION_COMPACT_WIDTH", true);
+    ComicTableLayout::save(*header, settings);
+    ComicTableLayout::restore(*header, settings);
+    QCOMPARE(table.columnWidth(ComicModel::Convention), compact);
+    header->resizeSection(ComicModel::Convention, 145);
+    ComicTableLayout::save(*header, settings);
+    // After the one-time compact-width update, manual widths survive restores.
+    settings.setValue("COMICS_VIEW_CONVENTION_COMPACT_WIDTH", true);
+    ComicTableLayout::restore(*header, settings);
+    QCOMPARE(table.columnWidth(ComicModel::Convention), 145);
 }
 
 QTEST_MAIN(ComicTableTest)

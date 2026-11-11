@@ -59,6 +59,9 @@ struct DescriptiveComicMetadata {
     QVariant favorite = false; // personal favorite state, shared by identical comics
     QVariant publicationType; // doujinshi / tankobon / magazine, or NULL
 
+    QVariant seriesName; // one personal series, independent of legacy series/number
+    QVariant convention; // one convention/event, e.g. C107
+
     // the people and names of a multi-line field, one per line
     QStringList getWriters() const;
     QStringList getPencillers() const;
@@ -82,8 +85,8 @@ struct DescriptiveComicMetadata {
         QVariant DescriptiveComicMetadata::*member;
     };
 
-    static const std::array<Column, 46> &columns();
-    static const std::array<Column, 9> &personalColumns();
+    static const std::array<Column, 48> &columns();
+    static const std::array<Column, 11> &personalColumns();
 
     static QStringList assignments();
 
@@ -105,7 +108,7 @@ public:
 
 private:
     DescriptiveComicMetadata values;
-    std::bitset<46> fields;
+    std::bitset<48> fields;
 };
 
 #endif

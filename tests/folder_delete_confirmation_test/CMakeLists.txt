@@ -1,0 +1,6 @@
+qt_add_executable(folder_delete_confirmation_test main.cpp)
+yacreader_apply_build_options(folder_delete_confirmation_test)
+target_include_directories(folder_delete_confirmation_test PRIVATE ${PROJECT_SOURCE_DIR}/YACReaderLibrary)
+target_link_libraries(folder_delete_confirmation_test PRIVATE Qt6::Widgets Qt6::Test)
+add_test(NAME folder_delete_confirmation_test COMMAND folder_delete_confirmation_test)
+set_tests_properties(folder_delete_confirmation_test PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)

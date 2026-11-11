@@ -72,8 +72,8 @@ void DescriptiveMetadataTest::columnsMatchExistingSchema()
     QMap<QString, QString> types;
     while (q.next())
         types.insert(q.value(1).toString(), q.value(2).toString());
-    QCOMPARE(types.size(), 72);
-    QCOMPARE(DescriptiveComicMetadata::columns().size(), size_t(46));
+    QCOMPARE(types.size(), 74);
+    QCOMPARE(DescriptiveComicMetadata::columns().size(), size_t(48));
     QSet<QString> names;
     for (const auto &column : DescriptiveComicMetadata::columns()) {
         const auto name = QString::fromLatin1(column.name);
