@@ -2275,8 +2275,9 @@ YACReaderLibrary non ti impedirà di creare altre librerie, ma è meglio tenerne
     </message>
     <message>
         <location filename="library_window.cpp" line="252"/>
-        <source>YACReader Library</source>
-        <translation>Libreria YACReader</translation>
+        <source>HenYacReader Library</source>
+        <oldsource>YACReader Library</oldsource>
+        <translation type="unfinished">Libreria YACReader</translation>
     </message>
     <message>
         <location filename="library_management_coordinator.cpp" line="492"/>

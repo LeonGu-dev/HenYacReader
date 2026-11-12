@@ -103,6 +103,12 @@ if ($Step -in 'Deploy', 'All') {
     Copy-Item -LiteralPath "$sourceRoot\dependencies\pdfium\win\x64\pdfium.dll" -Destination $deployRoot -Force
     Copy-Item -Path "$sourceRoot\dependencies\openssl\win\x64\*" -Destination "$deployRoot\openssl" -Force
     Copy-Item -LiteralPath "$sourceRoot\COPYING.txt", "$sourceRoot\README.md" -Destination $deployRoot -Force
+    if ($ReleasePayload) {
+        Copy-Item -LiteralPath "$sourceRoot\release\portable-README.md" -Destination "$deployRoot\README.md" -Force
+        New-Item -ItemType Directory -Path "$deployRoot\licenses" -Force | Out-Null
+        Copy-Item -LiteralPath "$sourceRoot\third_party\QsLog\LICENSE.txt" -Destination "$deployRoot\licenses\QsLog-LICENSE.txt" -Force
+        Copy-Item -LiteralPath "$sourceRoot\release\THIRD-PARTY-NOTICES.md" -Destination "$deployRoot\licenses" -Force
+    }
     Copy-Item -LiteralPath "$sourceRoot\release\server" -Destination $deployRoot -Recurse -Force
     Get-ChildItem -LiteralPath $buildRoot -Recurse -Filter '*.qm' |
         Where-Object { $_.BaseName -notlike '*_source' } |

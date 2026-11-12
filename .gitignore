@@ -69,7 +69,7 @@ c_x86_64.pch
 # Claude Code
 .claude/
 
-# MyYACReader local tools, acceptance builds and personal library data
+# HenYacReader local tools, acceptance builds and personal library data
 /.build-tools/
 /artifacts/
 /profile/
@@ -85,4 +85,3 @@ __pycache__/
 
 # These source documents/helpers are not build output despite their names.
 !/scripts/local/build-baseline.ps1
-!/docs/myyacreader/history/local-build-baseline.md

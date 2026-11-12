@@ -249,7 +249,7 @@ void LibraryWindow::setupUI()
 
     createConnections();
 
-    setWindowTitle(tr("YACReader Library"));
+    setWindowTitle(tr("HenYacReader Library"));
 
     setMinimumSize(800, 480);
 

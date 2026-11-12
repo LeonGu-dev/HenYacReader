@@ -2186,8 +2186,9 @@
     </message>
     <message>
         <location filename="library_window.cpp" line="252"/>
-        <source>YACReader Library</source>
-        <translation>YACReader Kütüphane</translation>
+        <source>HenYacReader Library</source>
+        <oldsource>YACReader Library</oldsource>
+        <translation type="unfinished">YACReader Kütüphane</translation>
     </message>
     <message>
         <location filename="library_management_coordinator.cpp" line="164"/>

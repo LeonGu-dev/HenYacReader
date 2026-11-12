@@ -2155,7 +2155,8 @@
     </message>
     <message>
         <location filename="library_window.cpp" line="252"/>
-        <source>YACReader Library</source>
+        <source>HenYacReader Library</source>
+        <oldsource>YACReader Library</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>

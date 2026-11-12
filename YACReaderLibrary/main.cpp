@@ -142,6 +142,7 @@ int main(int argc, char **argv)
     QApplication app(argc, argv);
 
     app.setApplicationName("YACReaderLibrary");
+    app.setApplicationDisplayName("HenYacReader Library");
     app.setOrganizationName("YACReader");
     app.setApplicationVersion(VERSION);
     YACReader::initializeSharedPluginPaths();

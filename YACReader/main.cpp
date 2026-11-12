@@ -115,6 +115,8 @@ int main(int argc, char *argv[])
 #endif
 
     app.setApplicationName("YACReader");
+    app.setApplicationDisplayName("HenYacReader");
+    app.setApplicationVersion(VERSION);
     app.setOrganizationName("YACReader");
     YACReader::initializeSharedPluginPaths();
 

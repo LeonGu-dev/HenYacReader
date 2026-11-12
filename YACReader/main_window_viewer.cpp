@@ -305,7 +305,7 @@ void MainWindowViewer::setupUI()
 
     createToolBars();
 
-    setWindowTitle("YACReader");
+    setWindowTitle("HenYacReader");
 
     checkNewVersion();
 
@@ -961,7 +961,7 @@ void MainWindowViewer::open(QString path, ComicDB &comic, QList<ComicDB> &siblin
     QFileInfo fi(path);
     currentComicPath = fi.absoluteFilePath();
 
-    setWindowTitle("YACReader - " + titleOrFileName(comic.info, fi.fileName()));
+    setWindowTitle("HenYacReader - " + titleOrFileName(comic.info, fi.fileName()));
 
     applyLibraryReaderMode(comic.info.type.value<YACReader::FileType>());
 
@@ -1020,7 +1020,7 @@ void MainWindowViewer::openComic(QString pathFile)
     currentComicPath = fi.absoluteFilePath();
     getSiblingComics(fi.absolutePath(), fi.fileName());
 
-    setWindowTitle("YACReader - " + fi.fileName());
+    setWindowTitle("HenYacReader - " + fi.fileName());
 
     enableActions();
     applySavedReaderMode();
@@ -1047,7 +1047,7 @@ void MainWindowViewer::openFolderFromPath(QString pathDir)
     currentComicPath = fi.absoluteFilePath();
     getSiblingComics(fi.absolutePath(), fi.fileName());
 
-    setWindowTitle("YACReader - " + fi.fileName());
+    setWindowTitle("HenYacReader - " + fi.fileName());
 
     enableActions();
     applySavedReaderMode();
@@ -1064,7 +1064,7 @@ void MainWindowViewer::openFolderFromPath(QString pathDir, QString atFileName)
     currentComicPath = fi.absoluteFilePath();
     getSiblingComics(fi.absolutePath(), fi.fileName());
 
-    setWindowTitle("YACReader - " + fi.fileName());
+    setWindowTitle("HenYacReader - " + fi.fileName());
 
     enableActions();
     applySavedReaderMode();
@@ -1320,6 +1320,9 @@ void MainWindowViewer::toggleWidthHeight()
 }
 void MainWindowViewer::checkNewVersion()
 {
+    // This fork is distributed through its own releases, not upstream updates.
+    if (QGuiApplication::applicationDisplayName().startsWith(QStringLiteral("HenYacReader")))
+        return;
     Configuration &conf = Configuration::getConfiguration();
     QDate lastCheck = conf.getLastVersionCheck();
     QDate current = QDate::currentDate();

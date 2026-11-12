@@ -2283,8 +2283,9 @@ YACReaderLibrary не помешает вам создать больше биб
     </message>
     <message>
         <location filename="library_window.cpp" line="252"/>
-        <source>YACReader Library</source>
-        <translation>Библиотека YACReader</translation>
+        <source>HenYacReader Library</source>
+        <oldsource>YACReader Library</oldsource>
+        <translation type="unfinished">Библиотека YACReader</translation>
     </message>
     <message>
         <location filename="library_management_coordinator.cpp" line="492"/>

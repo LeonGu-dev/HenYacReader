@@ -30,7 +30,7 @@ def verify(source: Path, build: Path | None = None, payload: Path | None = None)
     if payload:
         apps = {"YACReader.exe", "YACReaderLibrary.exe", "YACReaderLibraryServer.exe"}
         executables = apps | {"vc_redist.x64.exe"}
-        roots = {"languages", "translations", "utils", "openssl", "server", "qml",
+        roots = {"languages", "translations", "utils", "openssl", "server", "qml", "licenses",
                  "generic", "iconengines", "imageformats", "networkinformation",
                  "platforms", "platforminputcontexts", "sqldrivers", "styles",
                  "tls", "multimedia", "position", "sensors", "sceneparsers",

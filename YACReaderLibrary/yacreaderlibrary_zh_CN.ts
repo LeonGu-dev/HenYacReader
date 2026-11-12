@@ -2272,8 +2272,9 @@ YACReaderLibrary不会阻止您创建更多的库，但是您应该保持较低�
     </message>
     <message>
         <location filename="library_window.cpp" line="252"/>
-        <source>YACReader Library</source>
-        <translation>YACReader Library</translation>
+        <source>HenYacReader Library</source>
+        <oldsource>YACReader Library</oldsource>
+        <translation>HenYacReader 书库</translation>
     </message>
     <message>
         <location filename="library_management_coordinator.cpp" line="492"/>

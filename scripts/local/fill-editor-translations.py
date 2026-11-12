@@ -23,6 +23,7 @@ translations = {
         'File information': '文件信息', '%1 pages': '%1 页', 'Filename': '文件名', 'Location': '位置',
     },
     'LibraryWindow': {
+        'HenYacReader Library': 'HenYacReader 书库',
         'Edit smart list...': '编辑智能列表…',
         'Changes could not be saved': '无法保存修改',
     },

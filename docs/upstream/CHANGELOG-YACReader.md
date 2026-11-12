@@ -1,0 +1,751 @@
+# YACReader Changelog
+
+Version counting is based on semantic versioning (Major.Feature.Patch)
+
+## 10.5.0
+
+### YACReader
+
+* Add Bicubic as a scaling method in Settings, offering sharper images than Bilinear and faster scaling than Lanczos.
+* Fix opening comics at page -1 after removing them from the "Reading" list.
+* Improve toolbar on macOS.
+
+### YACReaderLibrary
+
+* Reading lists and labels keep comics whose files are removed from the library. Their covers show in gray, with their metadata and last known file name. You can still edit their metadata, get data from Comic Vine, set a custom cover, reorder them, and remove them from the list. When the same file comes back, at any path, the comic is available again.
+* Reading lists and labels keep a comic when its file is replaced, for example by a tool that writes ComicInfo.xml into the archive.
+* Import reading lists in CBL XML or JSON format. Preview and adjust matches to comics in your library, and keep missing books in the reading order so you can find them later.
+* Match missing books to library comics individually or across an entire reading list.
+* Export reading lists as CBL XML, JSON, or a web page.
+* Create smart lists that show the current results of a saved search.
+* Organize reading lists and smart lists in folders.
+* Track missing issues in regular folders, using Comic Vine or entering the issue numbers yourself. Edit their metadata and covers, and automatically match newly added files to the missing issues.
+* Include the same comic more than once in a reading list, with each appearance keeping its place in the reading order.
+* Sort search results by series, volume, and issue number.
+* The metadata editor saves only the fields that you change, also when you edit several comics. Comic Vine changes only the fields that it returns.
+* Report failed Comic Vine lookups and incomplete results.
+* Fix removing comics belonging to child reading lists from a parent list view.
+* Fix newly added comics sometimes appearing in the middle of a reading list instead of at the end.
+* Fix library lock handling and add a way to clear these locks from the GUI and webui.
+* Improve library opening speed over network shares.
+* Improve main toolbar on macOS.
+
+### Server
+
+* Add server API v3 so compatible mobile clients can browse missing comics, reading lists, and smart lists, including their folders, with content ordered as on the desktop. Existing clients remain supported.
+* Fix a security issue that could let cover requests access image files outside the library's covers folder.
+* Fix memory leak updating libraries.
+
+### WebUI
+
+* Browse reading lists, smart lists, their folders, Favorites, tags, and Recent from the library menu.
+* View missing comics in reading lists and folders, including their available metadata and covers.
+* Choose how many days count as recent in this browser's settings.
+* Improve the home page and add a connect device dialog. iOS and Android clients can use now the QR scaner with the webui.
+* Add mouse wheel page navigation to the reader.
+
+## 10.4.0
+
+### YACReader
+* Avoid duplicated images in double page mode after a layout adjustment.
+* New setting to draw a fold shadow in the double page mode.
+
+### YACReaderLibrary
+* Reload the views only when a remote client changes the library that is open, and only after a sync that changed something.
+
+### Server
+* New API to change comic and folder fields from remote clients and webui. You'll be able to set comics and folders as read/unread, completed and theirs types.
+
+### WebUI
+* Add actions for comics and folders: set as read/unread, set as completed/uncompleted, set the type, and remove comics from Continue reading. Open them with a right click or a long press on a cover, or with the menu next to the comic or folder title.
+
+## 10.3.2
+
+### YACReader
+* Improve double page layout stability when going back and forth after finding single image exceptions.
+* Add more system information about the rendering pipelines used.
+* Improve zooming performance in the regular reading mode.
+* Fix unnecessary animation when the flow is shown.
+* Fix continuous scroll mode not updating the flow.
+* Fix bookmarks when continuous scroll mode is used.
+* Fix saving pages in continuous scroll mode.
+* Fix saving/exporting while pages are still missing.
+
+### All GUI apps
+* Fix performance degradation on high-resolution screens. This has affected builds using Qt 6.5 or later. It's a deep change, so please let me know if you find any issues in the flow views or grid views.
+
+### All apps
+* Fix sorting when using Qt builds without ICU. This mostly affected Linux users.
+
+## 10.3.1
+
+### YACReader
+* Fix continuous vertical scroll mode shortcut not being saved.
+* Improve handling of invalid characters in the renaming feature.
+* Improve layout in the renaming/organizing dialog.
+* Add a software-rendered "go to flow" option for systems with performance problems.
+* Fix scrolling while a file is loading.
+
+## 10.3.0
+
+### YACReaderLibrary
+* Unify folder and comic browsing in the grid view. The side information panel can show information about folders, lists and selected items. There are settings to decide if folders should be displayed alongside comics and if folders and comics should be kept visually separated.
+* Fix drag & drop for sorting comics in lists.
+* Add state restoration when going back and forth through the navigation history.
+* Add scroll and current item restoration when switching between content views.
+* Keep current scroll position when editing comics.
+* Fix info panel in the grid view not getting updates when the selected comic metadata changes.
+* Fix rating context menu in the grid view.
+* Add reset rating to the comic context menu.
+* Add support for renaming folders inside the app. This preserves the state of the folder and its subfolders (completed, read, dates, etc.) rather than creating a new folder like updating the library does if you rename the folder directly on the file system.
+* Add organizing functionalities for renaming files and creating folder structures based on metadata. Highly experimental.
+* Support for dropping images onto folders and comics to change their covers.
+
+### WebUI
+* Add per-library search.
+* Use the same sorting as the rest of the apps.
+* Restore the previous scroll position when navigating back through library folders.
+* Add per-library continue reading list.
+
+## 10.2.0
+
+### YACReader
+* Change default shortcuts for modifying the magnifying glass size to avoid conflicts with the page zoom shortcuts, `[`, `]`.
+* Add an optional circular magnifying glass, with an optional ring drawn around it. The configured size is kept as a rectangle, so switching back and forth doesn't lose it.
+* Add optional edge easing for the magnifying glass. The magnified region is pushed toward the edges of the view, so content near the border can be inspected without pushing the cursor all the way into the corner.
+* Require a full wheel notch before the magnifying glass changes size or zoom, so a light trackpad gesture no longer resizes it.
+* Fix showing the go to flow bar asking for permission to control the computer on macOS. Moving the cursor into the bar now works without granting any accessibility permission, where before it was silently doing nothing.
+* Add a setting to control what the Escape key does. It can keep quitting the reader, as before, or instead cancel the topmost active mode: magnifying glass, dictionary, go to flow and then fullscreen.
+* Fix crash caused by changing reading direction while quickly turning pages.
+* Use pinch and ctrl+wheel mouse to change the zoom level.
+
+### YACReaderLibrary
+* Add a library repair function to restore missing covers and rescan files that previously failed to be added.
+* Add actions to create and restore library database backups.
+* Automatically create and retain database backups in `.yacreaderlibrary/backups`.
+* When database corruption is detected, offer to attempt a repair or restore a backup. Damaged originals are preserved in `.yacreaderlibrary/recovery`.
+* Fix comics info export/import and covers package import/export error handling.
+* Fix grid comic cells info height so the title doesn't overlap the other fields.
+* Add a function to open the library root location.
+* Add a help dialog for the search engine. Use the drop down menu in the search field.
+* Add quick search presets. Use the drop down menu in the search field.
+* Fix `open containing folder` asking for permission to control Finder on macOS.
+* Improve the server dialog UI a bit and add the option to open the Web UI from it.
+
+### YACReaderLibraryServer
+* Add the `repair-library` command to restore missing covers and rescan files that previously failed to be added.
+* Add the `backup-library`, `list-backups`, and `restore-library` commands.
+* Automatically create and retain database backups in `.yacreaderlibrary/backups`.
+* Add the `repair-library-db` command to attempt to repair a damaged database. Damaged originals are preserved in `.yacreaderlibrary/recovery`.
+
+### WebUI
+* Add a very basic web reader.
+* Add rescan xml functionality to the webui.
+* Add more metadata fields to the detail view.
+
+### All GUI apps
+* New settings dialogs.
+
+### All apps
+* Unify comics sorting to use the string based universal number everywhere.
+* Experimental support for image based comics in epub format.
+
+## 10.1.0
+
+### YACReader
+* Improve save current page. It includes the comic file name in the default image name and the page number.
+* Add an extract page action. It extracts the original visible pages when image based variants are used. The file name and page number are used as the output.
+* Save the destination path for save/export page between runs.
+* Fix low resolution images generated on `save current page`.
+* Fix magnifying glass not using the source material.
+* Improve last page detection in continuous scroll mode.
+* Improve What's new dialog to show the full changelog.
+* Improve continuous scroll mode with better performance and less flickering when resizing/loading.
+* Fix reading position being reset to the cover when changing between fit modes.
+
+### YACReaderLibrary
+* Fix comics order when opening a comic from YACReaderLibrary.
+
+### YACReaderLibraryServer
+* Don't crash at startup if the server can't bind to any address.
+* Redirect `/` to `/webui`.
+* New `/webui` design.
+* Settings regarding metadata and auto-libraries updates can be controlled from `/webui/settings`.
+* Add a new web content browser to `/webui`.
+* Add update libraries functionality to `/webui`.
+* Fix `number` in various HTTP APIs.
+
+### All GUI Apps
+* Better system theme detection.
+* New button in the help dialog for showing the changelog.
+
+### All apps
+* Add support for long paths on Windows. This is experimental and only includes library creation and opening files (including the server), other functionality may or may not work with long paths, but the critical aspect of this is the folder structure of the library so overall it is a big win. NOTE: You need to enable long paths support on Windows itself for this to work, `HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem` -> `LongPathsEnabled` -> `1`.
+* Better PDF rendering that accounts for tall images used in web comics.
+
+## 10.0.0
+
+### YACReader
+* Add support for continuous scroll mode.
+* Fix the translator.
+* Add Lanczos interpolation for image scaling. You can control the method used via the settings under `Image adjustments`.
+* Fix hdpi trackpad scrolling when scroll animations are enabled.
+
+### YACReaderLibrary
+* Navigating between comics in the metadata editor no longer copies fields from the previous comic into ones that have no value set. To edit shared metadata across multiple comics at once, select them all and use the bulk edit dialog.
+
+### All GUI Apps
+* Migrate Flow implementation from OpenGL to QRhi. This is a full new implementation with better performance and compatibility with operating systems and hardware.
+* Add light/dark themes support that follow the system configuration.
+* Add a theme editor and support for custom themes.
+* The apps include 12 built in themes to pick from.
+* Add an application language setting with a system default option in YACReader and YACReaderLibrary.
+* Fix fullscreen mode in Windows, interaction with the OS is now possible while the apps are in fullscreen.
+* Improve support for multi-screen setups.
+* Fix PDFs with crop information on macOS.
+
+### All apps
+* Add support for user-installed Qt image format plugins via the shared `plugins/imageformats` folder in the YACReader settings directory.
+
+## 9.16.4
+
+### YACReaderLibrary
+* Fix migration from pre-9.14 libraries.
+
+## 9.16.3
+
+### YACReader
+* Fix current page/time label content when the content is too long.
+
+### YACReaderLibrary
+* Fix table view last section stretch. Before it was only working randomly.
+* Fix empty table view caused by wront state being saved. You'll need to reconfigure the table view headers to your liking after this.
+* Fix open comic shortcut in fullscreen mode.
+
+## 9.16.2
+
+### YACReaderLibrary
+* New customizable User Agent string to use it with Comic Vine. It can be set in YACReaderLibrary.ini in the [ComicVine] section using the `COMIC_VINE_USER_AGENT` key.
+* Prevent crash when opening the folders context menu if a folder is not selected.
+* Fix crash when using the `Set type` menu on libraries.
+
+## 9.16.1
+
+### YACReaderLibrary
+* Fix cover loading in Comic Vine scraper.
+
+## 9.16.0
+
+### YACReader
+* Don't use scroll animations on macos by default, it where hdpi scroll is most likely to be used.
+* New toolbar on macos.
+* New mouse modes to turn pages. You can setup the app to use the left/right buttons to turn pages directly or you can click on the left/right part of the screen to turn pages.
+* New setting to control whether the time is shown in the 'current page/total' label.
+
+### YACReaderLibrary
+* Improve flexibility of the open comic in third party app setting so more complex commands can be used. e.g. `open -a "/Applications/My Reader.app" "{comic_file_path}"`.
+* Fix setting the comic rating in the table view.
+* Log libraries validation when the app starts.
+* New toolbar on macos.
+* New setting in Comic Vine scraper to force exact volume matches.
+* Better default search query in the Comic Vine scraper.
+* Improved navigation in Comic Vine scraper, including keeping the current query around to make edits and refined searches easier.
+* Add support for custom covers for any folder using the context menu.
+* The edit cover buttons now support looping through pages, going forward from the last returns to the first, and going backward from the first jumps to the last.
+* Add support for custom covers for comics using the edit metadata dialog, you can use a pick file button or drag&drop an image into the cover view in the dialog.
+* Covers can be set in bulk for various comics at once.
+* New button to reset to the default cover of a comic.
+* Support for storing the new image filters from iOS and Android apps.
+
+### YACReaderLibraryServer
+* Log libraries validation when the app starts.
+
+### All apps
+* PDF libraries have been updated for all Windows builds.
+
+## 9.15.0
+
+### YACReader
+* Save magnifying glass size and zoom level.
+* Add shortcut to reset the magnifying glass to its defaults (size and zoom), it is `slash` by default but it can be reasigned.
+* Bump PDF render size.
+* Fix trackpad scrolling, it makes using trackpads more reponsive and natural.
+* Added more info to Help -> System info.
+
+### YACReaderLibrary
+* Fix headers in the table view getting stuck in a non moveable state.
+* Add option to set the type of a library. It will convert all the content to desired type (comic, manga, etc) and it will set that type as the default one for that library. Available in the library context menu.
+* Added more info to Help -> System info.
+* New setting to open comics in third party reader apps, it works by entering a command that will launch the app, e.g. "/path/to/the/app {comic_file_path}". You can use `{comic_file_path}` as a placeholder where `YACReaderLibrary` will place thet path to the comic file.
+* Purge covers and metadata not being used after a full library update.
+* Fix crash when updating the current folder content after a library update.
+* Fix crash when current folders is empty after an update.
+* Enable dropping content on the FolderContentView.
+* Fix `open containing folder...` shortcut for comics.
+* Add a dialog to show information about a library, it includes the number of folders and comics and the number of read comics.
+* Fix occasional crashes when using automatic library updates.
+* Add setting to hide the "Continue Reading..." banner from the home view.
+* Improve Grid and Flow Info comics view scroll performance.
+
+### YACReaderLibraryServer
+* New command --system-info to print information about the execution environment and available resources (including what image formats are supported and what libraries are used by the app).
+* Fix automatic libraries updates not being triggered.
+
+### All apps
+* Sorting heuristic to try to find spreads in the content of a comic is now only used for files with less than 1000 pages to avoid false positives.
+
+## 9.14.2
+
+### YACReaderLibrary
+* Fix columns in the search results.
+* Fix type not being propagated to new folders from their parents.
+* Fix default type set to folders in the root folder when they are added.
+* Improve and fix comic file size format.
+
+## 9.14.1
+
+### YACReader
+* Add setting to disable scroll animations and scroll smoothing, recommended if you are using a touch pad or if you find the mouse wheel behaviour laggy.
+* Fix missing translation when opening YACReader from YACReaderLibrary.
+
+### YACReaderLibrary
+* Fix "Set type" context menu the grid view for folders.
+* Add a different versioning strategy for databases. DBs version will change only when the structure changes and not when YACReader version changes.
+* Add support for updating libraries automatically with various settings to chose from. During automatic library updates most actions are disabled, you can stop an update by clicking on the busy indicator next to the Libraries title.
+* Improve content reloading. Navigation and selection state is no longer reseted after content changes (e.g. library updates, tags edits, etc.)
+* The app will try to move comics and folders to the trash bin when deletions are requested, if the file system used doesn't support trash bin the files will be removed permanetly.
+* Add menu to choose what columns are displayed in the table comics view (do a right click on the header to show it). The view has new 3 new headers to choose from (Series, Volume and Story arc).
+* Migrate `number` and `arcNumber` data types to `TEXT`. This only affects databases created before 9.13 and fixes problems with some formats of numbers (e.g. 1.10).
+* Propage update date to all the parent folders.
+* Fix crash when resorting comics in reading lists in table view view and the comic flow is hidden.
+* Fix cover loading in QML views due to malformed URLs.
+* Improve style of the webui status page.
+* Fix type not being propagated to new files in a folder.
+* Mark the current type in the context menu so the user can know the current type.
+
+### YACReaderLibraryServer
+* Add `rescan-xml-info` command.
+* Improved API to provide better integration with the clients (Android 1.4.0 and iOS 3.29.0).
+
+### All Apps
+* New universal builds for macos.
+
+## 9.13.1
+
+### YACReaderLibrary
+* Fix crash when dropping comics in sublists
+
+## 9.13
+
+### YACReaderLibrary
+* Avoid showing stale information in the server config dialog by updating the connection information when the dialog is opened.
+* Add new metadata support, it improves compatibility with ComicInfo.xml
+* Add support for showing a "recently added/updated" indicator. The number of days to consider something recent can be configured in the settings.
+* Improved comic metadata dialog.
+* Add textual tags support that can be queried through the search engine.
+* Make = in the search engine work as : does.
+* Add new operators to the search engine: exact match ==, <, >, <=, >=.
+* Support filtering by since/before dates in the search engine. e.g. `added > 7` means recent content added since 7 days ago, and `added < 30` means content added before the last 30 days.
+* Show the full library path in the dialog shown to warn about missing libraries.
+* Fix scroll bar in the info comics view in Qt6 builds.
+* New `Recent` smart list, it will show recent comics added.
+* Try to detect changed files with the same name on libraries updates, there is also a new setting to decide if the modified date of a file should be used as an indicator to know if the file has been changed since it was added (disabled by default).
+* Fix alphanumeric navigation in the folders tree view. Shortcuts were interfering the default behaviour, now some shortcuts will be ignored if the folders tree has the focus.
+* Fix sorting in the Comic Vine series selection dialog.
+* Fix getting only distinct rows when querying folders through the search engine.
+
+### YACReader
+* Add shortcuts for moving by one the double page mode to the left/right, by default CTRL + SHIFT + LEFT, and,  CTRL + SHIFT + RIGHT. Remember that you can change any shortcut in the shortcuts dialog. You can also achieve this functionality using the "Go to page flow" and chossing the page you want to be on the left/right (depending on the reading mode comic/manga).
+
+### All Apps
+* New icons for macos.
+
+## 9.12
+
+### YACReaderLibrary
+* Fix scroll in grid views when using Qt6 builds.
+* Fix deleting metadata from comics also deleted the number of pages info.
+* Use https://github.com/nayuki/QR-Code-generator instead of libqrencode for QR code generation.
+* Do not accept empty values for the server port in the server settings dialog.
+
+### Server
+* New search API that exposes the search engine.
+* Print scannable QR code at server start
+
+## 9.11
+
+### YACReader
+* Fix segfault (or worse) when exiting YACReader while processing a comic.
+* Fix last read page calculation in double page mode.
+
+### YACReaderLibrary
+* Fix drag&drop in the comics grid view.
+* Detect back/forward mouse buttons to move back and forward through the browsing history.
+* Fix crash when disabling the server.
+
+### All apps
+* Run logger in a dedicated thread to avoid segfaults at application shutdown
+* Add support for poppler-qt6 pdf backend
+* Remove image allocation limit.
+
+## 9.10
+
+### YACReader
+* Fixed color selection dialog appearing as a subwindow in macos.
+* Better support for HDPI screens (SVG icons).
+
+### YACReaderLibrary
+* Update QtWebApp webserver to v1.8.6
+* New folder content view that replaces the old `subfolders in this folder` view shown when folders don't have direct comics.
+* Fixed going forward in history navigation.
+* Continue Reading view that it is shown for the root folder.
+* UI gets updated when YACReaderLibrary gets updates from YACReader or YACReader for iOS.
+* Linux: Add fallback for dynamically loading libqrencode on distros that don't provide unversioned library symlinks
+* Fixed selected folder restoration after folder updates.
+* Better support for HDPI screens (SVG icons).
+* Add option to delete metadata from comics.
+* Importing ComicInfo.XML is now optional and disabled by default, you can change the behavior in Settings -> General.
+* Add option to scan XML metadata from all the comics in a folder.
+
+### Server
+* Add webui status page (reachable by navigating to server::port/webui)
+
+## 9.9.2
+
+### General
+* New builds using Qt6.
+* macos builds are notarized.
+* Windows builds are codesigned.
+
+### YACReaderLibrary
+* Fix potential infinite loop/crash on library updates.
+* Fix comic properties dialog sizing.
+* Fixes and stability improvements.
+
+
+## 9.9.1
+
+### YACReader
+* Fix "go to" dialog not clearing the page number between runs.
+* Fix scroll behavior in "go to flow" view (macos).
+
+### YACReaderLibrary
+* Fix scroll behavior in "cover flow" view (macos).
+* Fix grid view unable to scroll in some systems.
+
+
+## 9.9.0
+
+### YACReader
+* Show error when opening bad open recent entries
+* GoTo page: Fix segfault when entering page numbers greater than comic's page count
+  (toolbar and page flow)
+* Initialize GotoFlow on current page, not cover
+* Quick navigation mode: Fix page index error when using both mouse and keyboard for navigation
+* Remove obsolete double page mode debug messages
+* Support HDPI screens.
+* Use one wheel mouse step per page in full page mode.
+* Add updated MIME types to .desktop file for .cbz and .cbr
+* Add settings to control page turning behaviour on scroll.
+* Make forward and backward buttons in a mouse turn pages.
+* Don't crash if bookmarks get corrupt for some reason.
+* Magnifying glass fixes and improvements.
+* Shorcuts customization fixes.
+
+### YACReaderLibrary
+* Support HDPI screens.
+* Support import legacy XML info in comic files.
+* Ensure that comic info exports use .ydb as file suffix.
+* Enable arrow keys navigation in the folders tree view.
+* Add `Publication Date` column to the comics table view.
+* Use a scale effect in the comics grids on mouse over.
+* Add system info to the help/about dialog to help reporting bugs.
+* Fix selection when clicking on a folder in search mode.
+* Fix defaul value for manga/comic mode in folders.
+* Add an edit for filtering series results returned by Comic Vine.
+* Support editing comics tags sequentially without leaving the edit dialog.
+* Fix export/import comics info.
+
+### Server
+* Always serve a cover image to the iOS client for any folder that has content (requeries a library content update).
+
+## 9.8.2
+### YACReaderLibrary
+* Fix opening comics from the continue reading banner.
+* Make available next/prev comic covers in the iOS app while reading. (ios app 3.16.1 needed)
+### Server
+* Make available next/prev comic covers in the iOS app while reading. (ios app 3.16.1 needed)
+
+## 9.8.1
+### YACReaderLibrary
+* Fix "reading lists" reading order on YACReader. Now YACReader is able to open the right comics in the right order.
+### Server
+* Fix "reading lists" reading order on YACReader for iOS. Now YACReader for iOS is able to open the right comics in the right order (ios app 3.15.0 or newer is needed).
+
+## 9.8.0
+### YACReader
+* Add support for full manga mode.
+* Fix UP,DOWN,LEFT,RIGHT shortcuts for moving a zoomed in page around.
+### YACReaderLibrary
+* New search engine.
+* New `manga` field added to comics and folders to tag content as manga, any content added to a manga folder will become manga automatically.
+* Support for HTML in comic synopsis, this fixes the synopsis when it comes from Comic Vine with HTML tags.
+* Improve keyboard navigation in Comic Vine dialog.
+### Server
+* New `manga` field is sent to YACReader for iOS, so comics tagged as manga will be recognized as such when reading remotely or importing comics.
+
+## 9.7.1
+### YACReader
+* Fix enlargement/stretching default value
+
+## 9.7.0
+### YACReader
+* Image enlargement/stretching can now be disabled for fit
+  to width and height
+* New option to show covers as single pages in double page mode (enabled by default)
+
+### YACReaderLibrary
+* update QsLog logger to version 2.1, snapshot 46b643d5bcbc
+* fix object leaks in database code
+* add bidirectional sync support
+
+### YACReaderLibraryServer
+* add support for port setting from the commandline
+* update internal server code to QtWebApp 1.7.11
+
+### Refactoring
+* Move QtWebApp and QsLog to new third_party directory
+
+## 9.6.0
+### Reader and Library
+* RAR5 support.
+
+### YACReader
+* Fix some issues in magnifying glass when used in hdpi screens
+
+### YACReaderLibrary
+* New setting to close YACReaderLibrary to the system tray.
+* Fastest sync back from iOS.
+* Option to hide current/next comic banner in the grid view.
+* Fix saving progress when reading in double page mode.
+* Fixes in Comic Vine integration.
+* Other fixes and stability improvements.
+
+## 9.5.0
+* Require at least Qt 5.4 for compiling, Qt 5.6 for qml based views
+
+### Reader and Library
+* Remove legacy OpenGL flow needed for Qt 5.3 compatibility
+* Improve commandline handling
+
+### YACReaderLibrary
+* New current/next comic view in the grid view, available for folders and reading lists.
+* Comics in `Reading` are now sorted by last time opened.
+* Fix system log functions
+* Replace Qrencode executables with dynamic loaded library
+* Add prebuilt qrencode libraries for win and mac
+* Update Qrencode to version 4.0.0
+
+### Server
+* New API V2 implementation.
+
+## 9.0.0 (2018-2-18)
+
+### Library and Reader
+
+* Updated Qt to 5.9.1.
+* Faster (way faster) pdf backend based on pdfium.
+* unarr is used now for handling compressed files (there are some temporal side
+  effects: f.e. 7z is not supported). YACReader can still be compiled using 7zip
+  as decompresion library.
+* Fixed fullscreen context menus (windows).
+* Minor fixes.
+* New app icons for Windows.
+* Initial support for Haiku OS
+
+### YACReaderLibrary
+* New comics view in addition to flow and grid views: info view.
+* New side view for showing current comic info in the grid view
+  (it can be shown using the icon in the right bottom part of the window).
+* Improved the look and feel of the grid view.
+* Fixed Comic Vine integration (using the new https end point).
+* Usability fixes to Comic View scraper.
+* Fixed UI update when clients update comics status.
+* New server setting for disabling covers on folders in the client's remote
+  browser (iOS), this is a workaround to fix a performance issue in large
+  libraries.
+* Fixed YACReader not found in macos.
+
+### YACReader
+* Added an option to disable showing the go to flow on mouse over.
+* New "Quick Navigation Mode" for the go to flow feature, full-wide + a scroll
+  bar, it can be enabled in the settings dialog. (thanks to Yuu Mousou).
+* Zig-zag autoscroll reading mode, please see the reading section in the
+  shortcuts dialog for enabling this, by default there are no keys assigned to
+  the scrolling actions (thanks to Daisuke Cato).
+* Menu bar added for YACReader in macos (thanks to Daisuke Cato).
+* "Go to flow" is now manga aware (thanks to Daisuke Cato).
+* Added "Open recent" menu entry.
+* Fixed issues experienced when opening new comics too fast
+
+### YACReaderLibraryServer (headless version of YACReaderLibrary)
+* Added a systemd service file to run yacreaderlibraryserver on Linux based systems.
+* Added safety checks to the commandline interface to avoid creation of empty libraries
+
+## 8.5.0 - 2016-03-28
+* headless version of YACReaderLibrary's server (no gui)
+* grid view has been enhanced with a new slider for choosing covers size
+ and it also includes a fully configurable background that can use
+ the covers of your comics. Now every single folder will have a unique look.
+* YACReader UI has been refreshed with a cleaner look.
+* New fit and zoom modes, finally!.
+* open recent functionality
+
+## 8.0.0
+* Reading lists
+* Tags
+* 'Favorites' and 'being read' lists
+* New search engine, now you can filter folders and comics
+* New grid viewb
+* Add and delete folders
+* Update a single folder (no need for updating the whole library to rescan a single folder)
+* Drag and drop for adding new comics and folders
+* Customizable shorcuts
+* Manga mode (thank you Felix)
+* Spread page detection for double page mode (including manga mode)(thank you again Felix :) )
+* New view for folders not containing comics (only subfolders)
+* Save selected covers to disk
+* Comics in Reading Lists and Tags can be sorted by drag&drop
+* Sublist in Reading Lists can by sorted by drag&drop
+* Added WebP image format support
+* The user has to provide its own Comic Vine API key to prevent usage limit errors from Comic Vine
+* New unarr decompression backend for Linux and Unix systems
+* Fixed memory and filedescriptor leaks in 7zip wrapper
+* Dropped support for Qt4
+* Lots of smaller bugfixes
+
+## 7.2.0
+* Added support for the new "remote read" feature in iOS devices.
+* Improved stability
+* Fixed broken compatibility with Windows XP
+* Improved Linux "packageability" (thanks to Felix, Alexander and Yoann)**
+* German translation (thanks to Gerhard Joeken)
+* Bug fixes.
+
+## 7.1.0
+* Added option to reset the rating of a comic book.
+* Fixed bugs affecting page information.
+* Fixed bug that marked a finished comic as started if it was read again.
+* Added 2 statuses for folders (Complete/Completed).
+* Fixed bug in YACReaderLibrary <-> YACReader communication.
+* Added actions related to comics to the context menu of the comics table.
+* Fixed bug that caused unlimited server log growth.
+* Fixed minor bugs
+
+## 7.0.2 (MacOSX only)
+* Removed Poppler usage in MacOSX version.
+* Work on translations.
+* Fixed minor bugs
+
+## 7.0.1
+* Added QsLog to YACReader
+* Fixed bug in YACReaderLibrary <-> YACReader communication.
+
+## 7.0 (Final)
+* Fixed keyboard events in some dialogs
+* Fixed support for Rar archives on Unix systems
+* Fixed problems deleting comics
+* Improved error handling
+Fixed communication between YACReader and YACReaderLibrary * Fixed communication between YACReader and YACReaderLibrary
+* Fixed the toolBar in MacOSX
+* Improved OpenGL compatibility on NVIDIA cards
+* Fixed minor bugs
+
+## 6.9 (internal)
+* Added automatic opening of the next/previous comic when reaching the end/cover of the current comic
+* Fixed behavior of new version detected dialog. Now warns once a day or if user chooses every 14 days.
+* Fixed the width adjustment of the toolbar title in YACReaderLibrary.
+* Added log to YACReaderLibrary (will allow users to provide more information about their bugs).
+* Fixed bug in browsing history (and editing comics) after using search engine.
+
+## 6.8 (internal)
+* Fixed bug that caused unexpected shutdown after changing the vertical sync mode (flow).
+* Fixed bug that caused toolbar in viewer could not be hidden/shown without an open comic book
+* Improved error handling when opening comics
+* Fixed some bugs related to comic opening
+* Added rating function
+* The viewer can now open image files directly. Opening an image file opens the directory containing the file with all images.
+* Fixed sorting of folders and comics used in browsing from iOS devices.
+
+## 6.7 (internal)
+* Added new fields in the database to store additional information about comics: rating, current page, bookmarks and image settings.
+* Added communication between YACReaderLibrary and YACReader to be able to store comics progress and additional information
+
+## 6.6 (internal)
+* Modified YACReader to open compressed files using 7z.dll (.so, .dylib)
+* YACReader now opens comics by the last page read.
+* Fixed bug that caused that some comics could not be opened from YACReaderLibrary in YACReader.
+* Fixed the way in which the "information label" was updated.
+
+## 6.5
+* New main interface of YACReaderLibrary and YACReader
+* Fixed bug that caused the server not to activate on first boot on MacOSX
+* Fixed bug that caused a crash when closing YACReaderLibrary every time the server was used
+* New design for the comic properties dialog.
+* Added forward and backward navigation of visited folders.
+* Editing a library name does not force library reloading now.
+* Corrected the background color in the magnifying glass.
+* New button to adjust to top
+* Removed always on top option
+* Show in container folder fixed on Windows and MacOSX
+
+## 6.4 (internal)
+* Normalized rendering of pages in double page mode
+* Added delete comics from hard disk function
+* New comic toolbar icons
+
+## 6.3 (internal)
+* Improved error handling related to libraries
+* Added button to hide cover art in the import screen
+* Added "Libraries" and "Folders" headings to the navigation bar
+* New icons to select root folder, expand and collapse all.
+* Button to change the server port by the user.
+* Comic list columns can now be reordered.
+* YACReaderLibrary now allows only one instance running.
+* Read column added.
+* Comic list style changed.
+* Fixed bugs related to perform operations on comics when there was none selected in the comics list.
+
+## 6.2
+* New "welcome" window
+* New import/update window
+* New control for search
+* New image for the marks of read comics (OpenGL only)
+* Changed the layout of some icons
+* Changed the way to delete meta information (delete database/disk covers)
+* Hidden YACReader Flow advanced configuration options, accessible now after pressing a button (simpler configuration dialogs)
+
+## 6.0.1 (internal)
+* Fixed bug when using Home/end keys
+* Fixed bug that when starting YACReaderLibrary for the first time caused that the covers were not shown (only under certain circumstances)
+* Added some keyboard shortcuts to YACReaderLibrary to the already existing ones
+
+## 6.0
+* Improved startup speed thanks to the use of /LTCG as a compile option
+* Fixed OpenGL related bug that caused excessive CPU consumption on NVidia cards
+Added icons for each supported file type in YACReaderLibrary * Added icons for each supported file type in YACReaderLibrary
+* Changed "folder" icon in YACReaderLibrary
+Added page width adjustment bar in YACReader toolbar * Added widget for page width in YACReader toolbar
+* Added widget for information label
+* Added new visual style to goToFlow
+* Added filters to control brightness, contrast and gamma value * Added new filters to control brightness, contrast and gamma value
+* Added front page and last page notifications
+* InformationLabel is now displayed in the upper right corner.
+* InformationLabel is displayed in 3 different sizes depending on resolution.
+* Fixed bug that caused read comic marks not to be drawn properly.
+* InformationLabel now remembers whether or not to display the information label.
+* Fixed bug that caused YACReader to crash when turning pages too fast.
+* Added "Size" column to the comics list in YACReaderLibrary.
+* Added "natural" sorting of the comics in the current comic directory.
+* Fixed bug that caused the wrong comic to open in YACReaderLibrary.
+* Changed the way languages are loaded, now you can add translations without recompiling.
