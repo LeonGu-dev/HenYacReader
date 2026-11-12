@@ -676,7 +676,13 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
     const auto value = [&item](int column) { return columnValue(item, column); };
     // Display fallback only; the metadata and API keep their original values.
     const auto orDash = [](const QString &title) { return title.isEmpty() ? QStringLiteral("-") : title; };
-    const auto title = [&] { return orDash(titleOrFileName(rowMetadata(item), rowFileName(item))); };
+    const auto title = [&] {
+        if (rowInfo(item)) {
+            const auto value = rowMetadata(item).title.toString();
+            return orDash(value.trimmed().isEmpty() ? rowFileName(item) : value);
+        }
+        return orDash(titleOrFileName(rowMetadata(item), rowFileName(item)));
+    };
 
     auto sizeString = [=] {
         auto bytes = value(ComicModel::Hash).toString().right(value(ComicModel::Hash).toString().length() - 40).toULongLong();
@@ -700,9 +706,7 @@ QVariant ComicModel::data(const QModelIndex &index, int role) const
     else if (role == TitleRole)
         return title();
     else if (role == ReadableTitle) {
-        const auto &metadata = rowMetadata(item);
-        // Continue-reading cards and action labels have no separate number field.
-        return orDash(titleIncludingNumber(metadata, rowFileName(item)));
+        return title();
     } else if (role == FileNameRole)
         return rowComic(item) ? value(FileName) : QVariant();
     else if (role == RatingRole)
@@ -1548,30 +1552,45 @@ QModelIndexList ComicModel::supportedIndexes(const QModelIndexList &indexes, Com
 
 void ComicModel::deleteMetadata(const QModelIndexList &indexes)
 {
+    QSet<ComicInfoId> ids;
+    for (const auto &index : indexes)
+        if (index.isValid() && index.model() == this && index.row() < _data.size())
+            if (const auto *info = rowInfo(_data.at(index.row())))
+                ids.insert(info->id);
+    if (ids.isEmpty())
+        return;
     QString connectionName = "";
+    bool saved = false;
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
-        db.transaction();
-        QSet<ComicInfoId> done;
-        for (const auto &mi : indexes) {
-            const auto *info = rowInfo(_data.at(mi.row()));
-            if (info == nullptr)
-                continue;
-            const auto id = info->id;
-            if (done.contains(id))
-                continue;
-            done.insert(id);
+        saved = db.transaction();
+        for (const auto id : ids) {
+            if (!saved)
+                break;
             if (auto info = DBHelper::loadComicInfo(id, db)) {
                 info->deleteMetadata();
-                DBHelper::update(&*info, db);
-            }
+                saved = DBHelper::update(&*info, db);
+            } else
+                saved = false;
         }
-        db.commit();
+        saved = saved && db.commit();
+        if (!saved)
+            db.rollback();
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);
-
-    reload();
+    if (!saved) {
+        emit persistenceFailed(tr("The comic information could not be cleared. No selected comics were changed."));
+        return;
+    }
+    filterValuesCache.reset();
+    updateRowsOf(ids, [](ComicInfo &info) { info.deleteMetadata(); }, 0, columnCount() - 1, { });
+    if (mode == SearchResult && currentMetadataFilter.active())
+        setMetadataFilter(currentMetadataFilter);
+    else
+        reload();
+    emit favoritesChanged({ });
+    emit metadataFilterChanged();
 }
 // TODO
 QVector<YACReaderComicReadStatus> ComicModel::setComicsRead(QList<QModelIndex> list, YACReaderComicReadStatus read)
@@ -1651,6 +1670,11 @@ void ComicModel::updateRowsOf(const QSet<ComicInfoId> &ids, const std::function<
 {
     if (ids.isEmpty())
         return;
+    // Filters retain copies of their unfiltered source. Keep those copies in
+    // step with successful writes so resetting/reapplying filters stays fresh.
+    for (auto &item : filterSource)
+        if (auto *info = rowInfo(item); info && ids.contains(info->id))
+            change(*info);
     QList<int> rows;
     for (int row = 0; row < _data.size(); row++) {
         auto *info = rowInfo(_data[row]);
@@ -1856,24 +1880,7 @@ void ComicModel::reload(const ComicDB &comic)
 
 void ComicModel::resetComicRating(const QModelIndex &mi)
 {
-    const auto *info = rowInfo(_data.at(mi.row()));
-    if (info == nullptr)
-        return;
-    const auto id = info->id;
-    QString connectionName = "";
-    {
-        QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
-
-        if (auto info = DBHelper::loadComicInfo(id, db)) {
-            info->rating = 0;
-            DBHelper::update(&*info, db);
-        }
-
-        connectionName = db.connectionName();
-    }
-    QSqlDatabase::removeDatabase(connectionName);
-
-    updateRowsOf({ id }, [](ComicInfo &info) { info.rating = 0; }, 0, columnCount() - 1, { });
+    updateRating(0, mi);
 }
 
 void ComicModel::notifyCoverChange(const QList<ComicInfoId> &ids)
@@ -1929,15 +1936,21 @@ void ComicModel::addComicsToFavorites(const QList<qulonglong> &comicIds)
 void ComicModel::addComicsToFavorites(const QList<QModelIndex> &comicsList)
 {
     QList<ComicDB> comics = getComics(comicsList);
+    if (comics.isEmpty())
+        return;
     QString connectionName = "";
+    bool saved = false;
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
 
-        DBHelper::insertComicsInFavorites(comics, db);
+        saved = DBHelper::insertComicsInFavorites(comics, db);
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);
-
+    if (!saved) {
+        emit persistenceFailed(tr("Favorites could not be saved. No selected comics were changed."));
+        return;
+    }
     QSet<ComicInfoId> changedInfo;
     for (const auto &comic : comics)
         changedInfo.insert(comic.info.id);
@@ -1983,14 +1996,21 @@ void ComicModel::addComicsToReadingList(const QList<QModelIndex> &comicsList, qu
 
 void ComicModel::addComicsToReadingList(const QList<ComicRowId> &rows, qulonglong readingListId)
 {
+    if (rows.isEmpty())
+        return;
     QString connectionName = "";
+    bool saved = false;
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
 
-        DBHelper::appendRowsToReadingList(ReadingListId(readingListId), rows, db);
+        saved = DBHelper::appendRowsToReadingList(ReadingListId(readingListId), rows, db);
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);
+    if (!saved)
+        emit persistenceFailed(tr("The selected comics could not be added to the reading list."));
+    else if (mode == ReadingList && getSourceId() == readingListId)
+        reload();
 }
 
 void ComicModel::deleteComicsFromFavorites(const QList<QModelIndex> &comicsList)
@@ -2244,24 +2264,24 @@ void ComicModel::setRecentRange(int days)
 
 void ComicModel::updateRating(int rating, QModelIndex mi)
 {
+    if (rating < 0 || rating > 5 || !mi.isValid() || mi.model() != this || mi.row() >= _data.size())
+        return;
     const auto *info = rowInfo(_data.at(mi.row()));
     if (info == nullptr)
         return;
     const auto id = info->id;
     QString connectionName = "";
+    bool saved = false;
     {
         QSqlDatabase db = DataBaseManagement::loadDatabase(_databasePath);
-        // TODO optimize update
-
-        if (auto info = DBHelper::loadComicInfo(id, db)) {
-            info->rating = rating;
-            DBHelper::update(&*info, db);
-        }
-
+        saved = DBHelper::updateComicRating(id, rating, db);
         connectionName = db.connectionName();
     }
     QSqlDatabase::removeDatabase(connectionName);
-
+    if (!saved) {
+        emit persistenceFailed(tr("The rating could not be saved. The previous rating was kept."));
+        return;
+    }
     updateRowsOf({ id }, [rating](ComicInfo &info) { info.rating = rating; }, 0, columnCount() - 1, { });
     // Let the star editor finish committing before the row can disappear.
     if (!currentMetadataFilter.ratings.isEmpty())

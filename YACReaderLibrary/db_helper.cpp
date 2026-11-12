@@ -2188,16 +2188,23 @@ qulonglong DBHelper::insertReadingSubList(const QString &name, qulonglong parent
     return query.lastInsertId().toULongLong();
 }
 
-void DBHelper::insertComicsInFavorites(const QList<ComicDB> &comicsList, QSqlDatabase &db)
+bool DBHelper::insertComicsInFavorites(const QList<ComicDB> &comicsList, QSqlDatabase &db)
 {
-    db.transaction();
+    if (!db.transaction())
+        return false;
     QSqlQuery query(db);
     query.prepare("UPDATE comic_info SET favorite = 1 WHERE id = :id");
     for (const auto &comic : comicsList) {
         query.bindValue(":id", comic.info.id.value());
-        query.exec();
+        if (!query.exec() || query.numRowsAffected() != 1) {
+            db.rollback();
+            return false;
+        }
     }
-    db.commit();
+    if (db.commit())
+        return true;
+    db.rollback();
+    return false;
 }
 
 // queries

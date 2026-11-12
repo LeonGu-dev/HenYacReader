@@ -51,10 +51,8 @@ protected:
     void run() override;
 
 private:
-    QSettings *settings;
     QString source;
     QString target;
-    bool importXmlMetadata { false };
     bool removeStaleLock { false };
     std::atomic_bool stopRequested { false };
     ComicInfoRepairSummary repairSummary;

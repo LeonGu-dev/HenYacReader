@@ -7,7 +7,6 @@
 #include "db_helper.h"
 #include "initial_comic_info_extractor.h"
 #include "staged_cover.h"
-#include "xml_info_parser.h"
 #include "yacreader_global.h"
 
 #include <QDir>
@@ -17,7 +16,6 @@
 #include <QImage>
 #include <QLibrary>
 #include <QLockFile>
-#include <QSettings>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -57,7 +55,6 @@ struct ExtractedInfo {
     int numPages { 0 };
     QImage cover;
     QPair<int, int> originalCoverSize { 0, 0 };
-    QByteArray xmlData;
     bool hasValidCover { false };
 };
 
@@ -183,32 +180,28 @@ QString existingComicPath(const QString &source, const QStringList &relativePath
     return { };
 }
 
-ExtractedInfo extractInfo(const QString &comicPath, int coverPage, bool importXmlMetadata)
+ExtractedInfo extractInfo(const QString &comicPath, int coverPage)
 {
     if (coverPage <= 0) {
         coverPage = 1;
     }
 
-    InitialComicInfoExtractor extractor(comicPath, QString(), coverPage, importXmlMetadata);
+    InitialComicInfoExtractor extractor(comicPath, QString(), coverPage, false);
     extractor.extract();
 
     ExtractedInfo result;
     result.numPages = extractor.getNumPages();
     result.cover = extractor.getCoverImage();
     result.originalCoverSize = extractor.getOriginalCoverSize();
-    result.xmlData = extractor.getXMLInfoRawData();
     result.hasValidCover = extractor.hasValidCover();
 
     if (result.numPages > 0 && !result.hasValidCover && coverPage != 1) {
-        InitialComicInfoExtractor fallbackExtractor(comicPath, QString(), 1, importXmlMetadata);
+        InitialComicInfoExtractor fallbackExtractor(comicPath, QString(), 1, false);
         fallbackExtractor.extract();
 
         result.numPages = fallbackExtractor.getNumPages();
         result.cover = fallbackExtractor.getCoverImage();
         result.originalCoverSize = fallbackExtractor.getOriginalCoverSize();
-        if (result.xmlData.isEmpty()) {
-            result.xmlData = fallbackExtractor.getXMLInfoRawData();
-        }
         result.hasValidCover = fallbackExtractor.hasValidCover();
     }
 
@@ -225,26 +218,11 @@ double coverRatio(const QPair<int, int> &size)
     return static_cast<double>(size.first) / static_cast<double>(size.second);
 }
 
-void bindXmlMetadata(QSqlQuery &query, const ComicInfo &info)
-{
-    for (const auto &field : xmlMetadataFields()) {
-        const auto placeholder = QString(":") + field.column;
-        if (qstrcmp(field.column, "type") == 0) {
-            // type holds a FileType enum, store it as int like DBHelper::update does
-            query.bindValue(placeholder, static_cast<int>(info.type.value<FileType>()));
-        } else {
-            query.bindValue(placeholder, info.*(field.member));
-        }
-    }
-}
-
 void prepareInvalidPageCountUpdate(QSqlQuery &query,
                                    const ComicInfo &info,
                                    const ExtractedInfo &extracted,
                                    bool preserveCustomCover,
-                                   const QImage &customCover,
-                                   bool xmlParsed,
-                                   const ComicInfo &updatedInfo)
+                                   const QImage &customCover)
 {
     QStringList assignments { "numPages = :numPages" };
 
@@ -261,12 +239,6 @@ void prepareInvalidPageCountUpdate(QSqlQuery &query,
         }
     }
 
-    if (xmlParsed) {
-        for (const auto &field : xmlMetadataFields()) {
-            assignments.append(QString("%1 = :%1").arg(field.column));
-        }
-    }
-
     query.prepare(QString("UPDATE comic_info SET %1 WHERE id = :id").arg(assignments.join(", ")));
     query.bindValue(":numPages", extracted.numPages);
     query.bindValue(":id", info.id.value());
@@ -278,10 +250,6 @@ void prepareInvalidPageCountUpdate(QSqlQuery &query,
     } else {
         query.bindValue(":originalCoverSize", coverSizeString(extracted.originalCoverSize));
         query.bindValue(":coverSizeRatio", coverRatio(extracted.originalCoverSize));
-    }
-
-    if (xmlParsed) {
-        bindXmlMetadata(query, updatedInfo);
     }
 }
 
@@ -395,8 +363,9 @@ bool executeUpdateWithCover(QSqlDatabase &db, QSqlQuery &query, const QString &c
 }
 
 ComicInfoRepairer::ComicInfoRepairer(QSettings *settings, QObject *parent)
-    : QThread(parent), settings(settings)
+    : QThread(parent)
 {
+    Q_UNUSED(settings)
 }
 
 void ComicInfoRepairer::repairLibrary(const QString &source, const QString &target, bool removeStaleLock)
@@ -408,7 +377,6 @@ void ComicInfoRepairer::repairLibrary(const QString &source, const QString &targ
     this->source = QDir::cleanPath(source);
     this->target = QDir::cleanPath(target);
     this->removeStaleLock = removeStaleLock;
-    importXmlMetadata = settings && settings->value(IMPORT_COMIC_INFO_XML_METADATA, false).toBool();
     stopRequested.store(false, std::memory_order_release);
     repairSummary = { };
     start();
@@ -552,18 +520,16 @@ void ComicInfoRepairer::run()
 
                 bool repaired = false;
                 if (repairCase == RepairCase::InvalidPageCount) {
-                    // this repair needs the full comic_info row: it is the base the parsed XML metadata is merged over
+                    // Read cover settings without importing or changing descriptive metadata.
                     const auto storedInfo = DBHelper::loadComicInfo(task.hash, db);
                     const auto info = storedInfo.value_or(ComicInfo());
                     QImage customCover;
                     const bool preserveCustomCover = storedInfo && info.usesExternalCover.toBool() && customCover.load(coverPath);
-                    const auto extracted = extractInfo(comicPath, task.coverPage, importXmlMetadata);
+                    const auto extracted = extractInfo(comicPath, task.coverPage);
 
                     if (storedInfo && extracted.numPages > 0 && (preserveCustomCover || (extracted.hasValidCover && extracted.originalCoverSize.second > 0))) {
-                        auto updatedInfo = info;
-                        const bool xmlParsed = importXmlMetadata && parseXMLIntoInfo(extracted.xmlData, updatedInfo);
                         QSqlQuery update(db);
-                        prepareInvalidPageCountUpdate(update, info, extracted, preserveCustomCover, customCover, xmlParsed, updatedInfo);
+                        prepareInvalidPageCountUpdate(update, info, extracted, preserveCustomCover, customCover);
                         if (preserveCustomCover) {
                             repaired = executeUpdate(db, update);
                         } else {
@@ -571,7 +537,7 @@ void ComicInfoRepairer::run()
                         }
                     }
                 } else if (repairCase == RepairCase::MissingCover) {
-                    const auto extracted = extractInfo(comicPath, task.coverPage, false);
+                    const auto extracted = extractInfo(comicPath, task.coverPage);
                     if (extracted.hasValidCover && extracted.originalCoverSize.second > 0) {
                         QSqlQuery update(db);
                         prepareMissingCoverUpdate(update, task, extracted);

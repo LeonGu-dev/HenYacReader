@@ -119,7 +119,7 @@ public:
     // at the end of the order
     static std::optional<SmartListId> insertSmartList(const QString &name, const QString &query, QSqlDatabase &db);
     static qulonglong insertReadingSubList(const QString &name, qulonglong parentId, int ordering, QSqlDatabase &db);
-    static void insertComicsInFavorites(const QList<ComicDB> &comicsList, QSqlDatabase &db);
+    static bool insertComicsInFavorites(const QList<ComicDB> &comicsList, QSqlDatabase &db);
     // updates
     static void update(qulonglong libraryId, ComicInfo &comicInfo);
     static void update(ComicDB *comics, QSqlDatabase &db);

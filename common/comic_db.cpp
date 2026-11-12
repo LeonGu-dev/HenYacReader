@@ -3,6 +3,7 @@
 #include "table_projection.h"
 #include "yacreader_global.h"
 
+#include <QDateTime>
 #include <QFileInfo>
 #include <QSqlQuery>
 #include <QSqlRecord>
@@ -279,56 +280,19 @@ ComicInfo::ComicInfo()
 
 void ComicInfo::deleteMetadata()
 {
-    title = QVariant();
-
-    coverPage = QVariant();
-
-    number = QVariant();
-    isBis = QVariant();
-    count = QVariant();
-
-    volume = QVariant();
-    storyArc = QVariant();
-    arcNumber = QVariant();
-    arcCount = QVariant();
-
-    genere = QVariant();
-
-    writer = QVariant();
-    penciller = QVariant();
-    inker = QVariant();
-    colorist = QVariant();
-    letterer = QVariant();
-    coverArtist = QVariant();
-
-    date = QVariant();
-
-    publisher = QVariant();
-    format = QVariant();
-    color = QVariant();
-    ageRating = QVariant();
-
-    synopsis = QVariant();
-    characters = QVariant();
-    notes = QVariant();
-
-    // type = QVariant(); reset or not???
-    editor = QVariant();
-    imprint = QVariant();
-    teams = QVariant();
-    locations = QVariant();
-    series = QVariant();
-    alternateSeries = QVariant();
-    alternateNumber = QVariant();
-    alternateCount = QVariant();
-    languageISO = QVariant();
-    seriesGroup = QVariant();
-    mainCharacterOrTeam = QVariant();
-    review = QVariant();
-
-    // tags = QVariant(); reset or not???
-
-    comicVineID = QVariant();
+    // Clear descriptive fields through their shared registry, including future
+    // additions. File identity, cover information and list membership survive.
+    for (const auto &column : DescriptiveComicMetadata::columns())
+        this->*column.member = QVariant();
+    favorite = false;
+    rating = 0;
+    read = false;
+    hasBeenOpened = false;
+    currentPage = 1;
+    bookmark1 = bookmark2 = bookmark3 = -1;
+    lastTimeOpened = QVariant();
+    lastTimeMetadataSet = QDateTime::currentSecsSinceEpoch();
+    edited = true;
 }
 QPixmap ComicInfo::getCover(const QString &basePath) const
 {

@@ -9,6 +9,7 @@
 #include "cover_utils.h"
 #include "data_base_management.h"
 #include "db_helper.h"
+#include "delete_confirmation.h"
 #include "folder.h"
 #include "folder_model.h"
 #include "initial_comic_info_extractor.h"
@@ -118,6 +119,11 @@ void ComicManagementCoordinator::addSelectedComicsToFavorites()
 void ComicManagementCoordinator::addSelectedComicsToLabel(qulonglong labelId)
 {
     comicsModel->addComicsToLabel(comicsModel->supportedIndexes(selectionProvider(), ComicAction::AddToList), labelId);
+}
+
+void ComicManagementCoordinator::addSelectedComicsToReadingList(qulonglong readingListId)
+{
+    comicsModel->addComicsToReadingList(comicsModel->supportedIndexes(selectionProvider(), ComicAction::AddToList), readingListId);
 }
 
 void ComicManagementCoordinator::openCurrentComic()
@@ -331,11 +337,9 @@ void ComicManagementCoordinator::setSelectedComicsType(YACReader::FileType type)
 
 void ComicManagementCoordinator::resetSelectedComicRatings()
 {
-    const auto indexList = comicsModel->supportedIndexes(selectionProvider(), ComicAction::SetReadState);
-    comicsModel->startTransaction();
-    for (const auto &index : indexList)
-        comicsModel->resetComicRating(index);
-    comicsModel->finishTransaction();
+    const auto rows = selectedRowIds(ComicAction::SetReadState);
+    for (const auto &row : rows)
+        comicsModel->resetComicRating(comicsModel->indexOf(row));
 }
 
 void ComicManagementCoordinator::assignNumbers()
@@ -378,6 +382,7 @@ void ComicManagementCoordinator::deleteMetadataFromSelectedComics()
         return;
 
     comicsModel->deleteMetadata(indexes);
+    emit rootContinueReadingReloadRequested();
 }
 
 void ComicManagementCoordinator::deleteSelectedComics()
@@ -798,12 +803,9 @@ void ComicManagementCoordinator::deleteComicsFromDisk(const QList<ComicRowId> &r
         question = QCoreApplication::translate("LibraryWindow", "The selected missing comics will be removed from this folder. Are you sure?");
     else
         question = QCoreApplication::translate("LibraryWindow", "The selected comics will be deleted from your disk, and the selected missing comics will be removed from this folder. Are you sure?");
-    const auto answer = QMessageBox::question(window,
-                                              QCoreApplication::translate("LibraryWindow", "Delete comics"),
-                                              question,
-                                              QMessageBox::Yes,
-                                              QMessageBox::No);
-    if (answer != QMessageBox::Yes)
+    if (!DeleteConfirmation::confirm(window,
+                                     QCoreApplication::translate("LibraryWindow", "Delete comics"),
+                                     question, { }, "comicDeleteConfirmation"))
         return;
 
     if (!missingRowIds.isEmpty()) {
@@ -859,12 +861,9 @@ void ComicManagementCoordinator::deleteComicsFromList(const QList<ComicRowId> &r
             break;
         }
     }
-    const auto answer = QMessageBox::question(window,
-                                              QCoreApplication::translate("LibraryWindow", "Remove comics"),
-                                              question,
-                                              QMessageBox::Yes,
-                                              QMessageBox::No);
-    if (answer != QMessageBox::Yes)
+    if (!DeleteConfirmation::confirm(window,
+                                     QCoreApplication::translate("LibraryWindow", "Remove comics"),
+                                     question, { }, "comicDeleteConfirmation"))
         return;
 
     const auto currentList = currentListProvider();

@@ -132,61 +132,26 @@ void LibraryWindowMenus::setupMenus()
     selectedLibrary->addAction(actions.removeLibraryAction);
     YACReader::addSperator(selectedLibrary);
 
-    auto typeMenu = new QMenu(tr("Set type"), selectedLibrary);
-    const auto typeActions = addTypeActions(typeMenu);
-    connectTypeActions(typeActions, this, [this](YACReader::FileType type) { emit currentLibraryTypeChangeRequested(type); });
-    connect(typeMenu, &QMenu::aboutToShow, this, [this, typeActions] { setCheckedType(typeActions, foldersModel->getRootFolder().type); });
-
-    selectedLibrary->addAction(typeMenu->menuAction());
-    YACReader::addSperator(selectedLibrary);
-
-    selectedLibrary->addAction(actions.rescanLibraryForXMLInfoAction);
-    selectedLibrary->addAction(actions.repairLibraryAction);
-    YACReader::addSperator(selectedLibrary);
-
     selectedLibrary->addAction(actions.backupLibraryAction);
     selectedLibrary->addAction(actions.restoreLibraryAction);
-    selectedLibrary->addAction(actions.repairLibraryDatabaseAction);
-    selectedLibrary->addAction(actions.recoverLibraryAccessAction);
     YACReader::addSperator(selectedLibrary);
 
-    selectedLibrary->addAction(actions.exportComicsInfoAction);
-    selectedLibrary->addAction(actions.importComicsInfoAction);
+    auto maintenance = new QMenu(tr("Advanced repair"), selectedLibrary);
+    maintenance->addAction(actions.repairLibraryAction);
+    maintenance->addAction(actions.repairLibraryDatabaseAction);
+    maintenance->addAction(actions.recoverLibraryAccessAction);
+    maintenance->addSeparator();
+    maintenance->addAction(actions.rescanLibraryForXMLInfoAction);
+    selectedLibrary->addAction(maintenance->menuAction());
     YACReader::addSperator(selectedLibrary);
-
-    selectedLibrary->addAction(actions.exportLibraryAction);
-    selectedLibrary->addAction(actions.importLibraryAction);
-    YACReader::addSperator(selectedLibrary);
-
     selectedLibrary->addAction(actions.openLibraryFolderAction);
-    selectedLibrary->addAction(actions.showLibraryInfo);
 
 #ifdef Q_OS_MACOS
     auto menuBar = window->menuBar();
 
     auto libraryMenu = new QMenu(tr("Library"), menuBar);
-    libraryMenu->addAction(actions.updateLibraryAction);
-    libraryMenu->addAction(actions.renameLibraryAction);
-    libraryMenu->addAction(actions.removeLibraryAction);
-    libraryMenu->addSeparator();
-    libraryMenu->addMenu(typeMenu);
-    libraryMenu->addSeparator();
-    libraryMenu->addAction(actions.rescanLibraryForXMLInfoAction);
-    libraryMenu->addAction(actions.repairLibraryAction);
-    libraryMenu->addSeparator();
-    libraryMenu->addAction(actions.backupLibraryAction);
-    libraryMenu->addAction(actions.restoreLibraryAction);
-    libraryMenu->addAction(actions.repairLibraryDatabaseAction);
-    libraryMenu->addAction(actions.recoverLibraryAccessAction);
-    libraryMenu->addSeparator();
-    libraryMenu->addAction(actions.exportComicsInfoAction);
-    libraryMenu->addAction(actions.importComicsInfoAction);
-    libraryMenu->addSeparator();
-    libraryMenu->addAction(actions.exportLibraryAction);
-    libraryMenu->addAction(actions.importLibraryAction);
-    libraryMenu->addSeparator();
-    libraryMenu->addAction(actions.openLibraryFolderAction);
-    libraryMenu->addAction(actions.showLibraryInfo);
+    // Keep the native menu and the library-row menu identical.
+    libraryMenu->addActions(selectedLibrary->actions());
 
     auto folderMenu = new QMenu(tr("Folder"), menuBar);
     folderMenu->addAction(actions.openContainingFolderAction);
@@ -371,10 +336,35 @@ void LibraryWindowMenus::showContinueReadingContextMenu(const QPoint &point, con
 
 void LibraryWindowMenus::setupAddToSubmenu(QMenu &menu)
 {
-    menu.addAction(actions.addToFavoritesAction);
     actions.addToMenuAction->setMenu(&menu);
-
-    // Old label membership is kept in the database, without a desktop entry.
+    const auto libraryPath = libraryPathProvider();
+    const auto addLists = [&](auto &&self, QMenu &destination, const QModelIndex &parent) -> void {
+        for (int row = 0; row < listsModel->rowCount(parent); ++row) {
+            const auto index = listsModel->index(row, 0, parent);
+            const auto kind = index.data(ReadingListModel::TypeListsRole).toInt();
+            if (kind == ReadingListModel::ReadingListFolder) {
+                auto folder = destination.addMenu(index.data().toString());
+                self(self, *folder, index);
+                if (folder->isEmpty()) {
+                    delete folder;
+                }
+            } else if (kind == ReadingListModel::ReadingList) {
+                auto action = destination.addAction(index.data().toString());
+                const QPersistentModelIndex target(index);
+                connect(action, &QAction::triggered, &menu, [this, libraryPath, target] {
+                    if (libraryPathProvider() == libraryPath && target.isValid())
+                        comicManagementCoordinator->addSelectedComicsToReadingList(target.data(ReadingListModel::IDRole).toULongLong());
+                });
+                // Child reading lists are ordinary lists too.
+                self(self, destination, index);
+            }
+        }
+    };
+    addLists(addLists, menu, { });
+    if (menu.isEmpty()) {
+        auto empty = menu.addAction(tr("No reading lists"));
+        empty->setEnabled(false);
+    }
 }
 
 void LibraryWindowMenus::showFoldersContextMenu(const QPoint &point)

@@ -65,6 +65,7 @@ public slots:
     void moveAndImportComicsToFolder(const QList<QPair<QString, QString>> &comics, const QModelIndex &folder);
     void addSelectedComicsToFavorites();
     void addSelectedComicsToLabel(qulonglong labelId);
+    void addSelectedComicsToReadingList(qulonglong readingListId);
     void openCurrentComic();
     void openComic(const ComicDB &comic, ComicModel::Mode mode);
     void openContainingFolderOfCurrentComic();

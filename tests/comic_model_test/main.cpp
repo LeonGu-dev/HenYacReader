@@ -64,6 +64,12 @@ private slots:
     void sharedViewAfterAListHasNoDeletedRows_data();
     void sharedViewAfterAListHasNoDeletedRows();
     void favoritesUseTheFileOfTheRow();
+    void clearMetadataPreservesCoversAndListMembership();
+    void clearMetadataRollsBackTheWholeSelection();
+    void ratingFailureKeepsStoredAndDisplayedValues();
+    void bulkFavoriteFailureRollsBackAndKeepsTheView();
+    void gridTitlesIgnoreLegacyNumbers();
+    void clearingFilteredSearchUpdatesTheRetainedSource();
     void removeFromReadingUsesTheComicOfTheRow();
     void placeholderRowsShowTheirMetadata();
     void placeholderCoverIsItsFileOrTheDefaultImage();
@@ -151,6 +157,159 @@ void ComicModelTest::init()
 void ComicModelTest::cleanup()
 {
     root.reset();
+}
+
+void ComicModelTest::clearMetadataPreservesCoversAndListMembership()
+{
+    QStringList assignments;
+    for (const auto &column : DescriptiveComicMetadata::columns())
+        assignments.append(QString::fromLatin1(column.name) + " = 'sample'");
+    QVERIFY(exec("UPDATE comic_info SET " + assignments.join(", ") + ", favorite = 1, read = 1, bookmark1 = 7, bookmark2 = 8, bookmark3 = 9, coverPage = 2, usesExternalCover = 1, originalCoverSize = '80x120', coverSizeRatio = 0.666, lastTimeCoverSet = 123 WHERE id = 1"));
+    const auto coverPath = LibraryPaths::coverPathFromLibraryDataPath(dataPath, QStringLiteral("hash-1"));
+    QVERIFY(QDir().mkpath(QFileInfo(coverPath).absolutePath()));
+    QImage cover(80, 120, QImage::Format_RGB32);
+    cover.fill(Qt::red);
+    QVERIFY(cover.save(coverPath));
+    QFile file(coverPath);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    const auto originalCover = file.readAll();
+    file.close();
+
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    model.deleteMetadata({ model.indexOf(ComicRowId(ComicId(1))), model.indexOf(ComicRowId(ComicId(5))) });
+    QString connection;
+    {
+        auto db = DataBaseManagement::loadDatabase(dataPath);
+        connection = db.connectionName();
+        const auto info = DBHelper::loadComicInfo(ComicInfoId(1), db);
+        QVERIFY(info.has_value());
+        for (const auto &column : DescriptiveComicMetadata::columns()) {
+            if (column.member == &DescriptiveComicMetadata::favorite)
+                QVERIFY(!(info.value().*column.member).toBool());
+            else
+                QVERIFY2((info.value().*column.member).isNull(), column.name);
+        }
+        QCOMPARE(info->rating, 0);
+        QVERIFY(!info->read);
+        QVERIFY(!info->hasBeenOpened);
+        QCOMPARE(info->currentPage, 1);
+        QCOMPARE(info->bookmark1, -1);
+        QCOMPARE(info->bookmark2, -1);
+        QCOMPARE(info->bookmark3, -1);
+        QVERIFY(info->lastTimeOpened.isNull());
+        QCOMPARE(info->hash, QString("hash-1"));
+        QCOMPARE(info->numPages.toInt(), 20);
+        QCOMPARE(info->coverPage.toInt(), 2);
+        QVERIFY(info->usesExternalCover.toBool());
+        QCOMPARE(info->originalCoverSize.toString(), QString("80x120"));
+        QCOMPARE(info->lastTimeCoverSet.toInt(), 123);
+    }
+    QSqlDatabase::removeDatabase(connection);
+    QCOMPARE(ints("SELECT comic_info_id FROM reading_list_entry ORDER BY ordering"), QList<int>({ 3, 1 }));
+    QCOMPARE(ints("SELECT id FROM comic ORDER BY id"), QList<int>({ 1, 2, 3, 4, 5 }));
+    QCOMPARE(model.rowCount(), 5);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), originalCover);
+}
+
+void ComicModelTest::clearMetadataRollsBackTheWholeSelection()
+{
+    QVERIFY(exec("CREATE TRIGGER reject_clear BEFORE UPDATE OF title ON comic_info WHEN OLD.id = 2 BEGIN SELECT RAISE(ABORT, 'test write failure'); END"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    QSignalSpy errors(&model, &ComicModel::persistenceFailed);
+    model.deleteMetadata({ model.indexOf(ComicRowId(ComicId(1))), model.indexOf(ComicRowId(ComicId(2))) });
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(ints("SELECT COUNT(*) FROM comic_info WHERE title IS NOT NULL"), QList<int>({ 4 }));
+    QCOMPARE(model.indexOf(ComicRowId(ComicId(1))).data(ComicModel::TitleRole).toString(), QString("Title 1"));
+    QCOMPARE(ints("SELECT comic_info_id FROM reading_list_entry ORDER BY ordering"), QList<int>({ 3, 1 }));
+}
+
+void ComicModelTest::ratingFailureKeepsStoredAndDisplayedValues()
+{
+    QVERIFY(exec("CREATE TRIGGER reject_rating BEFORE UPDATE OF rating ON comic_info BEGIN SELECT RAISE(ABORT, 'test write failure'); END"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    const auto row = model.indexOf(ComicRowId(ComicId(1)));
+    QSignalSpy errors(&model, &ComicModel::persistenceFailed);
+    model.updateRating(5, row);
+    model.resetComicRating(row);
+    QCOMPARE(errors.size(), 2);
+    QCOMPARE(row.data(ComicModel::RatingRole).toInt(), 1);
+    QCOMPARE(ints("SELECT rating FROM comic_info WHERE id = 1"), QList<int>({ 1 }));
+    QVERIFY(exec("DROP TRIGGER reject_rating"));
+    model.updateRating(5, row);
+    QCOMPARE(row.data(ComicModel::RatingRole).toInt(), 5);
+    QCOMPARE(ints("SELECT rating FROM comic_info WHERE id = 1"), QList<int>({ 5 }));
+    // Rating updates must not rewrite unrelated descriptive fields.
+    QCOMPARE(row.data(ComicModel::TitleRole).toString(), QString("Title 1"));
+    model.updateRating(6, row);
+    model.updateRating(2, { });
+    QCOMPARE(errors.size(), 2);
+}
+
+void ComicModelTest::bulkFavoriteFailureRollsBackAndKeepsTheView()
+{
+    QVERIFY(exec("CREATE TRIGGER reject_favorite BEFORE UPDATE OF favorite ON comic_info WHEN OLD.id = 2 BEGIN SELECT RAISE(ABORT, 'test write failure'); END"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    const auto first = model.indexOf(ComicRowId(ComicId(1)));
+    const auto second = model.indexOf(ComicRowId(ComicId(2)));
+    QSignalSpy errors(&model, &ComicModel::persistenceFailed);
+    QSignalSpy changed(&model, &ComicModel::favoritesChanged);
+    model.addComicsToFavorites(QList<QModelIndex> { first, second });
+    QCOMPARE(errors.size(), 1);
+    QCOMPARE(changed.size(), 0);
+    QCOMPARE(ints("SELECT COUNT(*) FROM comic_info WHERE favorite = 1"), QList<int>({ 0 }));
+    QVERIFY(!first.data(ComicModel::FavoriteRole).toBool());
+    QVERIFY(!second.data(ComicModel::FavoriteRole).toBool());
+    QVERIFY(exec("DROP TRIGGER reject_favorite"));
+    model.addComicsToFavorites(QList<QModelIndex> { first, second });
+    QCOMPARE(ints("SELECT id FROM comic_info WHERE favorite = 1 ORDER BY id"), QList<int>({ 1, 2 }));
+    QVERIFY(first.data(ComicModel::FavoriteRole).toBool());
+    QVERIFY(second.data(ComicModel::FavoriteRole).toBool());
+}
+
+void ComicModelTest::gridTitlesIgnoreLegacyNumbers()
+{
+    QVERIFY(exec("UPDATE comic_info SET title = NULL, series = 'Legacy Series', number = '42' WHERE id = 1"));
+    ComicModel model;
+    model.setupFolderModelData(2, dataPath);
+    const auto row = model.indexOf(ComicRowId(ComicId(1)));
+    QCOMPARE(row.data(ComicModel::TitleRole).toString(), QString("c1.cbz"));
+    QCOMPARE(row.data(ComicModel::ReadableTitle).toString(), QString("c1.cbz"));
+    QCOMPARE(row.data(ComicModel::NumberRole).toString(), QString("42"));
+    const auto titled = model.indexOf(ComicRowId(ComicId(2)));
+    QCOMPARE(titled.data(ComicModel::ReadableTitle).toString(), QString("Title 2"));
+}
+
+void ComicModelTest::clearingFilteredSearchUpdatesTheRetainedSource()
+{
+    QVERIFY(exec("UPDATE comic_info SET tags = 'Selected tag' WHERE id = 1"));
+    QList<ComicItem> items;
+    QString connection;
+    {
+        auto db = DataBaseManagement::loadDatabase(dataPath);
+        connection = db.connectionName();
+        auto query = comicsSearchQuery(db, "Title");
+        items = ComicItems::sortedForSearch(ComicItems::fromQuery(query));
+    }
+    QSqlDatabase::removeDatabase(connection);
+    ComicModel model;
+    model.setModelData(new QList<ComicItem>(items), dataPath);
+    MetadataFilter filter;
+    filter.tags.insert("Selected tag");
+    model.setMetadataFilter(filter);
+    QCOMPARE(model.rowCount(), 2);
+    model.deleteMetadata({ model.index(0, 0) });
+    QCOMPARE(model.rowCount(), 0);
+    model.setMetadataFilter({ });
+    QCOMPARE(model.rowCount(), 5);
+    const auto row = model.indexOf(ComicRowId(ComicId(1)));
+    QCOMPARE(row.data(ComicModel::RatingRole).toInt(), 0);
+    QCOMPARE(row.data(ComicModel::TitleRole).toString(), QString("c1.cbz"));
+    QVERIFY(!model.metadataFilterValues().value(0).contains("Selected tag"));
 }
 
 bool ComicModelTest::exec(const QString &sql)
@@ -447,7 +606,7 @@ void ComicModelTest::deletedComicRowsShowTheirInfoAndLastKnownFile()
     QVERIFY(deleted.data(ComicModel::IdRole).isNull());
     QVERIFY(deleted.data(ComicModel::FileNameRole).isNull());
     QCOMPARE(deleted.data(ComicModel::TitleRole).toString(), QString("Title 3"));
-    QCOMPARE(deleted.data(ComicModel::ReadableTitle).toString(), QString("#3 - Title 3"));
+    QCOMPARE(deleted.data(ComicModel::ReadableTitle).toString(), QString("Title 3"));
     QCOMPARE(deleted.data(ComicModel::RatingRole).toInt(), 3);
     QCOMPARE(model.index(0, ComicModel::FileName).data().toString(), QString("c3.cbz"));
     QCOMPARE(model.index(0, ComicModel::Path).data().toString(), QString("/Series/c3.cbz"));
@@ -890,7 +1049,7 @@ void ComicModelTest::placeholderRowsShowTheirMetadata()
     QCOMPARE(index.data(ComicModel::SeriesRole).toString(), QString("Expected Series"));
     QCOMPARE(index.data(ComicModel::VolumeRole).toString(), QString("2020"));
     QCOMPARE(index.data(ComicModel::TitleRole).toString(), QString("Expected Series"));
-    QCOMPARE(index.data(ComicModel::ReadableTitle).toString(), QString("Expected Series #7"));
+    QCOMPARE(index.data(ComicModel::ReadableTitle).toString(), QString("Expected Series"));
     QVERIFY(model.index(2, ComicModel::Title).data(Qt::DisplayRole).isNull());
 
     QVERIFY(model.hasUnavailableRows());
@@ -906,13 +1065,13 @@ void ComicModelTest::placeholderRowsShowTheirMetadata()
     QVERIFY(exec("UPDATE placeholder SET series = NULL, volume = 'The Red Mother' WHERE id = 1"));
     model.setupReadingListModelData(1, dataPath);
     QCOMPARE(index.data(ComicModel::TitleRole).toString(), QString("The Red Mother"));
-    QCOMPARE(index.data(ComicModel::ReadableTitle).toString(), QString("#7 - The Red Mother"));
+    QCOMPARE(index.data(ComicModel::ReadableTitle).toString(), QString("The Red Mother"));
     QVERIFY(model.index(2, ComicModel::Title).data(Qt::DisplayRole).isNull());
     QCOMPARE(index.data(ComicModel::NumberRole).toString(), QString("7"));
     QVERIFY(exec("UPDATE placeholder SET volume = NULL WHERE id = 1"));
     model.setupReadingListModelData(1, dataPath);
     QCOMPARE(index.data(ComicModel::TitleRole).toString(), QString("-"));
-    QCOMPARE(index.data(ComicModel::ReadableTitle).toString(), QString("#7"));
+    QCOMPARE(index.data(ComicModel::ReadableTitle).toString(), QString("-"));
     QVERIFY(exec("UPDATE placeholder SET number = NULL WHERE id = 1"));
     model.setupReadingListModelData(1, dataPath);
     QCOMPARE(index.data(ComicModel::TitleRole).toString(), QString("-"));

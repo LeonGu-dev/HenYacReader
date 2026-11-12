@@ -244,14 +244,7 @@ Rectangle {
         font.family: fontFamily
     }
 
-    Text {
-        anchors { bottom: realCell.bottom; left: realCell.left; margins: 4 }
-        text: cell.number ? "<b>#</b>" + cell.number : ""
-        color: itemDetailsColor
-        font.letterSpacing: fontSpacing
-        font.pointSize: fontSize
-        font.family: fontFamily
-    }
+
 
     ColorImage {
         id: pageImage

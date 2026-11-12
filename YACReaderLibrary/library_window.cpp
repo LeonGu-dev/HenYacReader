@@ -460,6 +460,7 @@ void LibraryWindow::doModels()
     // foldersModelProxy->setSourceModel(foldersModel);
     // comics
     comicsModel = new ComicModel(this);
+    connect(comicsModel, &ComicModel::persistenceFailed, this, [this](const QString &message) { QMessageBox::warning(this, tr("Changes could not be saved"), message); }, Qt::QueuedConnection);
     connect(comicsModel, &ComicModel::metadataFilterChanged, this, [this] {
         if (!hasLoadedLibraryModels())
             return;
@@ -821,10 +822,6 @@ void LibraryWindow::createToolBars()
                                                actions.setYonkomaAction },
                                              tr("Set the type of the selected comics"));
     editInfoToolBar->addWidget(setTypeToolButton);
-
-    editInfoToolBar->addSeparator();
-
-    editInfoToolBar->addAction(actions.deleteComicsAction);
 
     comicToolbarEntries = editInfoToolBar->actions();
 

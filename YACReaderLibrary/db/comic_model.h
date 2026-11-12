@@ -264,6 +264,7 @@ private:
     qlonglong recentDays;
 
 signals:
+    void persistenceFailed(const QString &message);
     void metadataFilterChanged();
     void isEmpty();
     void favoritesChanged(const QList<qulonglong> &comicIds);

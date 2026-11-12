@@ -88,7 +88,7 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
     restoreLibraryAction->setData(RESTORE_LIBRARY_ACTION_YL);
     restoreLibraryAction->setShortcut(ShortcutsManager::getShortcutsManager().getShortcut(RESTORE_LIBRARY_ACTION_YL));
 
-    repairLibraryDatabaseAction = new QAction(tr("Repair library database..."), window);
+    repairLibraryDatabaseAction = new QAction(tr("Check and repair library database..."), window);
     repairLibraryDatabaseAction->setToolTip(tr("Check the current library database and attempt to repair any damage"));
     repairLibraryDatabaseAction->setData(REPAIR_LIBRARY_DATABASE_ACTION_YL);
     repairLibraryDatabaseAction->setShortcut(ShortcutsManager::getShortcutsManager().getShortcut(REPAIR_LIBRARY_DATABASE_ACTION_YL));
@@ -98,8 +98,8 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
     recoverLibraryAccessAction->setData(RECOVER_LIBRARY_ACCESS_ACTION_YL);
     recoverLibraryAccessAction->setShortcut(ShortcutsManager::getShortcutsManager().getShortcut(RECOVER_LIBRARY_ACCESS_ACTION_YL));
 
-    repairLibraryAction = new QAction(tr("Repair covers and comic info"), window);
-    repairLibraryAction->setToolTip(tr("Retry comics with missing covers or incomplete information"));
+    repairLibraryAction = new QAction(tr("Repair covers and page counts..."), window);
+    repairLibraryAction->setToolTip(tr("Re-extract missing covers and invalid page counts from local comic files"));
     repairLibraryAction->setData(REPAIR_LIBRARY_ACTION_YL);
     repairLibraryAction->setShortcut(ShortcutsManager::getShortcutsManager().getShortcut(REPAIR_LIBRARY_ACTION_YL));
 
@@ -113,8 +113,8 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
     removeLibraryAction->setData(REMOVE_LIBRARY_ACTION_YL);
     removeLibraryAction->setShortcut(ShortcutsManager::getShortcutsManager().getShortcut(REMOVE_LIBRARY_ACTION_YL));
 
-    rescanLibraryForXMLInfoAction = new QAction(tr("Rescan library for XML info"), window);
-    rescanLibraryForXMLInfoAction->setToolTip(tr("Tries to find XML info embedded in comic files. You only need to do this if the library was created with version 9.8.2 or earlier, or if you are using third party software to embed XML info in the files."));
+    rescanLibraryForXMLInfoAction = new QAction(tr("Rescan comic metadata"), window);
+    rescanLibraryForXMLInfoAction->setToolTip(tr("Read metadata embedded in local comic files; existing fields may be overwritten"));
     rescanLibraryForXMLInfoAction->setData(RESCAN_LIBRARY_XML_INFO_ACTION_YL);
     rescanLibraryForXMLInfoAction->setShortcut(ShortcutsManager::getShortcutsManager().getShortcut(RESCAN_LIBRARY_XML_INFO_ACTION_YL));
 
@@ -483,7 +483,7 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
     renameListAction->setToolTip(tr("Rename any selected labels or lists"));
 
     //--
-    addToMenuAction = new QAction(tr("Add to..."), window);
+    addToMenuAction = new QAction(tr("Add to reading list"), window);
 
     addToFavoritesAction = new QAction(tr("Favorites"), window);
     addToFavoritesAction->setData(ADD_TO_FAVORITES_ACTION_YL);
@@ -526,7 +526,9 @@ void LibraryWindowActions::createActions(LibraryWindow *window, QSettings *setti
 
     // Closing a visible menu alone must not leave old configured shortcuts live.
     for (auto *action : { getInfoAction, asignOrderAction, addLabelAction,
-                          renameFilesAction, organizeFilesAction, renameComicsFilesAction, organizeComicsFilesAction }) {
+                          renameFilesAction, organizeFilesAction, renameComicsFilesAction, organizeComicsFilesAction,
+                          exportComicsInfoAction, importComicsInfoAction, exportLibraryAction, importLibraryAction,
+                          showLibraryInfo, addToFavoritesAction }) {
         action->setVisible(false);
         action->setEnabled(false);
         action->setShortcut(QKeySequence());
@@ -812,10 +814,6 @@ void LibraryWindowActions::setUpShortcutsManagement(EditShortcutsDialog *editSho
                                          tmpList = QList<QAction *>()
                                                  << createLibraryAction
                                                  << openLibraryAction
-                                                 << exportComicsInfoAction
-                                                 << importComicsInfoAction
-                                                 << exportLibraryAction
-                                                 << importLibraryAction
                                                  << updateLibraryAction
                                                  << backupLibraryAction
                                                  << restoreLibraryAction
@@ -825,8 +823,7 @@ void LibraryWindowActions::setUpShortcutsManagement(EditShortcutsDialog *editSho
                                                  << renameLibraryAction
                                                  << removeLibraryAction
                                                  << rescanLibraryForXMLInfoAction
-                                                 << openLibraryFolderAction
-                                                 << showLibraryInfo);
+                                                 << openLibraryFolderAction);
 
     allActions << tmpList;
 
@@ -1028,7 +1025,9 @@ void LibraryWindowActions::updateTheme(const Theme &theme)
     selectAllComicsAction->setIcon(comicsToolbar.selectAllIcon);
     editSelectedComicsAction->setIcon(comicsToolbar.editComicIcon);
     asignOrderAction->setIcon(comicsToolbar.assignNumberIcon);
-    deleteComicsAction->setIcon(comicsToolbar.deleteIcon);
+    deleteComicsAction->setIcon(QIcon(recoloredSvgToThemeFile(":/images/comics_view_toolbar/trash.svg",
+                                                              QColor("#e04b55"), QColor("#ba3540"), theme.meta.id,
+                                                              { .suffix = "_comic_delete" })));
     getInfoAction->setIcon(comicsToolbar.getInfoIcon);
 
     // Reading list icons

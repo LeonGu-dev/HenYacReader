@@ -1,3 +1,4 @@
+#include "comic_info_repairer.h"
 #include "data_base_management.h"
 #include "db_helper.h"
 #include "library_creator.h"
@@ -96,6 +97,7 @@ private slots:
     void updateMergesDiskAndLibrary();
     void canceledUpdateRollsBackAndReleasesLock();
     void xmlRescanHonorsLocksAndCancellation();
+    void coverRepairDoesNotImportEmbeddedMetadata();
     void folderXmlRescanUsesDatabaseDescendants();
     void folderContentLoadersReturnSortedValues();
     void replacementDecision();
@@ -145,6 +147,29 @@ void LibraryScanTest::init()
 void LibraryScanTest::cleanup()
 {
     root.reset();
+}
+
+void LibraryScanTest::coverRepairDoesNotImportEmbeddedMetadata()
+{
+    const auto id = value("SELECT comicInfoId FROM comic WHERE path = '/a.cbz'");
+    QVERIFY(!id.isEmpty());
+    QFile comic(source + "/a.cbz");
+    QVERIFY(comic.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QVERIFY(comic.write(storedZip({ { "page.png", png(Qt::red) }, { "ComicInfo.xml", QByteArray("<ComicInfo><Title>Embedded title</Title><Writer>Embedded author</Writer></ComicInfo>") } })) > 0);
+    comic.close();
+    QVERIFY(withDatabase([&](QSqlDatabase &db) {
+        QSqlQuery query(db);
+        return query.exec("UPDATE comic_info SET numPages = 0, title = 'My title', writer = 'My author', seriesName = 'My series' WHERE id = " + id);
+    }));
+    QSettings settings(root->filePath("repair.ini"), QSettings::IniFormat);
+    settings.setValue(IMPORT_COMIC_INFO_XML_METADATA, true);
+    ComicInfoRepairer repairer(&settings);
+    repairer.repairLibrary(source, LibraryPaths::libraryDataPath(source));
+    QVERIFY(repairer.wait(30000));
+    QVERIFY2(repairer.summary().error.isEmpty(), qPrintable(repairer.summary().error));
+    QCOMPARE(repairer.summary().repaired, 1);
+    QCOMPARE(value("SELECT numPages FROM comic_info WHERE id = " + id), QString("1"));
+    QCOMPARE(value("SELECT title || '|' || writer || '|' || seriesName FROM comic_info WHERE id = " + id), QString("My title|My author|My series"));
 }
 
 bool LibraryScanTest::writeComic(const QString &relativePath, const QColor &color, int padding)

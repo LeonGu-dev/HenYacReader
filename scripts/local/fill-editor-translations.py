@@ -10,6 +10,8 @@ translations = {
     },
     'FolderDeleteConfirmation': {
         'Folder: %1': '文件夹：%1',
+    },
+    'DeleteConfirmation': {
         'This operation cannot be undone. Are you really sure?': '该操作无法撤销，你真的确定吗？',
     },
     'CurrentComicBanner': {'Continue reading': '继续阅读'},
@@ -20,7 +22,13 @@ translations = {
         'No comic information entered': '尚未录入漫画信息',
         'File information': '文件信息', '%1 pages': '%1 页', 'Filename': '文件名', 'Location': '位置',
     },
-    'LibraryWindow': {'Edit smart list...': '编辑智能列表…'},
+    'LibraryWindow': {
+        'Edit smart list...': '编辑智能列表…',
+        'Changes could not be saved': '无法保存修改',
+    },
+    'LibraryWindowMenus': {
+        'Advanced repair': '高级修复', 'No reading lists': '暂无普通阅读列表',
+    },
     'EditFilterSmartListDialog': {
         'Edit smart list': '编辑智能列表', 'List name:': '列表名称：',
         'Apply to library': '作用于库', 'Choose folder': '选择文件夹',
@@ -39,6 +47,12 @@ translations = {
         'Tip: Smart filter lists are based on a folder or library, not a reading list.': '提示：筛选智能列表基于文件夹或库，无法基于阅读列表',
     },
     'LibraryWindowActions': {
+        'Check and repair library database...': '检查并修复数据库…',
+        'Repair covers and page counts...': '修复封面与页数…',
+        'Re-extract missing covers and invalid page counts from local comic files': '从本地漫画文件重新提取缺失封面和无效页数',
+        'Rescan comic metadata': '重新扫描漫画元数据',
+        'Read metadata embedded in local comic files; existing fields may be overwritten': '读取本地漫画文件中内嵌的元数据，可能覆盖已有字段',
+        'Add to reading list': '添加到阅读列表',
         'Save filter as smart list': '保存筛选为智能列表',
         'Save filter as reading list': '保存筛选为普通列表',
     },
@@ -97,6 +111,10 @@ translations = {
         'Rename is only available for one existing archive.': '只能为单个现存的压缩包生成新文件名。',
     },
     'ComicModel': {
+        'The comic information could not be cleared. No selected comics were changed.': '无法清除漫画信息，所选漫画均未修改。',
+        'Favorites could not be saved. No selected comics were changed.': '无法保存最爱状态，所选漫画均未修改。',
+        'The selected comics could not be added to the reading list.': '无法将所选漫画添加到阅读列表。',
+        'The rating could not be saved. The previous rating was kept.': '无法保存评分，已保留原评分。',
         'Convention': '即卖会',
         'Reading progress': '阅读进度', 'Author': '作者', 'Work / IP': '作品',
         'Characters': '角色', 'Tags': 'tag', 'Color / black and white': '彩色/黑白',
