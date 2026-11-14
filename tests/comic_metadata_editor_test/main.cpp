@@ -351,13 +351,13 @@ void ComicMetadataEditorTest::generatesCanonicalNamesAndValidatesWindowsNames()
     metadata.writer = QStringLiteral("作者");
     metadata.censorship = "uncensored";
     const auto generated = ComicFilename::generate(metadata);
-    QCOMPARE(generated, QStringLiteral("(C107) [示例社团 (作者)] 漫画标题 (示例作品) [日常] [冒险] [中国翻訳] [無修正] [示例汉化组]"));
+    QCOMPARE(generated, QStringLiteral("(C107) [示例社团 (作者)] 漫画标题 (示例作品) [中国翻訳] [無修正] [示例汉化组]"));
     DescriptiveComicMetadata reparsed;
     ComicFilename::parse(generated + ".zip").metadata.applyTo(reparsed);
     QCOMPARE(reparsed.title, metadata.title);
     QCOMPARE(reparsed.convention, metadata.convention);
     QCOMPARE(reparsed.writer, metadata.writer);
-    QCOMPARE(reparsed.tags, metadata.tags);
+    QVERIFY(reparsed.tags.isNull());
     QCOMPARE(reparsed.work, metadata.work);
     metadata.title = QStringLiteral("标题: A/B?");
     QVERIFY(ComicFilename::invalidNameReason(ComicFilename::generate(metadata) + ".zip").isEmpty());

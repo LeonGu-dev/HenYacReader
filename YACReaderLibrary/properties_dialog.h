@@ -76,6 +76,7 @@ public slots:
     bool setComicsForSequentialEditing(int currentComicIndex, QList<ComicRecord> records);
     void saveAndOpenPrevious();
     void saveAndOpenNext();
+    void save();
     void saveAndClose();
     void setCover(const QPixmap &cover);
     void setMultipleCover();

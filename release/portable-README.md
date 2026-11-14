@@ -1,4 +1,4 @@
-# HenYacReader 0.1.0 — Windows x64
+# HenYacReader 0.1.1 — Windows x64
 
 完整解压后运行 `YACReaderLibrary.exe` 打开书库，或运行 `YACReader.exe` 单独阅读。请保留同目录的 DLL、插件及其他文件，不要单独移动 EXE。
 
@@ -12,4 +12,4 @@ EXE 名称、应用配置标识和 `.yacreaderlibrary` 路径保留旧标识用�
 
 项目与更新：https://github.com/LeonGu-dev/HenYacReader
 
-本仓库当前私有，下载需要权限。基于 YACReader 改造，原作者 Luis Ángel San Martín Rodríguez；GPL v3 见 `COPYING.txt`，第三方说明见 `licenses/`。仅从本项目 Releases 手动更新。
+基于 YACReader 改造，原作者 Luis Ángel San Martín Rodríguez；GPL v3 见 `COPYING.txt`，第三方说明见 `licenses/`。仅从本项目 Releases 手动更新。

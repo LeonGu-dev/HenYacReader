@@ -184,11 +184,13 @@ void PropertiesDialog::createButtonBox()
 
     closeButton = buttonBox->addButton(QDialogButtonBox::Close);
     saveButton = buttonBox->addButton(QDialogButtonBox::Save);
+    closeButton->setText(tr("关闭"));
+    saveButton->setText(tr("保存"));
     previousButton = buttonBox->addButton("<", QDialogButtonBox::ButtonRole::NoRole);
     nextButton = buttonBox->addButton(">", QDialogButtonBox::ButtonRole::NoRole);
 
     connect(closeButton, &QAbstractButton::clicked, this, &PropertiesDialog::close);
-    connect(saveButton, &QAbstractButton::clicked, this, &PropertiesDialog::saveAndClose);
+    connect(saveButton, &QAbstractButton::clicked, this, &PropertiesDialog::save);
     connect(previousButton, &QAbstractButton::clicked, this, &PropertiesDialog::saveAndOpenPrevious);
     connect(nextButton, &QAbstractButton::clicked, this, &PropertiesDialog::saveAndOpenNext);
 }
@@ -672,6 +674,26 @@ void PropertiesDialog::saveAndOpenNext()
     }
 
     repaint();
+}
+
+void PropertiesDialog::save()
+{
+    if (!updateComics())
+        return;
+
+    coverChanged = false;
+    customCover = QImage();
+    QList<DescriptiveComicMetadata> metadata;
+    QList<std::optional<int>> ratings;
+    const int begin = sequentialEditing ? currentComicIndex : 0;
+    const int end = sequentialEditing ? currentComicIndex + 1 : records.length();
+    for (int i = begin; i < end; ++i) {
+        metadata.append(recordMetadata(records[i]));
+        const auto *info = recordInfo(records[i]);
+        ratings.append(info ? std::optional<int>(info->rating) : std::nullopt);
+    }
+    metadataEditor->setMetadata(metadata);
+    metadataEditor->setRatings(ratings);
 }
 
 void PropertiesDialog::saveAndClose()

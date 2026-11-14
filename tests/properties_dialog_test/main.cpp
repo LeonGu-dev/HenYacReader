@@ -8,6 +8,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
 #include <QLineEdit>
@@ -34,6 +35,7 @@ private slots:
     void vocabularyIsScopedToItsLibrary();
     void ratingIsDeferredAndAtomic();
     void renameDoesNotSaveMetadataDraft();
+    void saveKeepsDialogOpen();
 
 private:
     ComicRecord load(int id);
@@ -105,6 +107,37 @@ void PropertiesDialogTest::prepare(PropertiesDialog &dialog)
 {
     dialog.basePath = root;
     dialog.databasePath = data;
+}
+
+void PropertiesDialogTest::saveKeepsDialogOpen()
+{
+    PropertiesDialog dialog;
+    prepare(dialog);
+    QVERIFY(dialog.setComicsForSequentialEditing(0, { load(1), load(2) }));
+    dialog.show();
+    auto *buttons = dialog.findChild<QDialogButtonBox *>();
+    auto *save = buttons->button(QDialogButtonBox::Save);
+    auto *close = buttons->button(QDialogButtonBox::Close);
+    QCOMPARE(save->text(), QStringLiteral("保存"));
+    QCOMPARE(close->text(), QStringLiteral("关闭"));
+    QSignalSpy finished(&dialog, &QDialog::finished);
+    auto *title = dialog.findChild<QLineEdit *>("title");
+    title->setText("Saved first");
+    save->click();
+    QVERIFY(dialog.isVisible());
+    QVERIFY(finished.isEmpty());
+    QCOMPARE(recordMetadata(load(1)).title.toString(), QString("Saved first"));
+    QVERIFY(dialog.findChild<ComicMetadataEditor *>()->editedMetadata().isEmpty());
+    title->setText("Saved again");
+    save->click();
+    QCOMPARE(recordMetadata(load(1)).title.toString(), QString("Saved again"));
+    dialog.saveAndOpenNext();
+    QCOMPARE(title->text(), QString("Title"));
+    title->setText("Unsaved second");
+    close->click();
+    QVERIFY(!dialog.isVisible());
+    QCOMPARE(finished.count(), 1);
+    QCOMPARE(recordMetadata(load(2)).title.toString(), QString("Title"));
 }
 
 void PropertiesDialogTest::unchangedSavePreservesOldAndNewMetadata()

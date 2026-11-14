@@ -191,9 +191,6 @@ QString ComicFilename::generate(const DescriptiveComicMetadata &metadata)
     const auto work = safe(metadata.work.toString());
     if (!work.isEmpty())
         parts << '(' + work + ')';
-    for (const auto &tag : metadata.tags.toString().split('\n', Qt::SkipEmptyParts))
-        if (!safe(tag).isEmpty())
-            parts << '[' + safe(tag) + ']';
     const auto translation = metadata.translationStatus.toString();
     if (translation == "translated")
         parts << QStringLiteral("[中国翻訳]");
